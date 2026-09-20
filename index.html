@@ -11,7 +11,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<title>Reflow</title>
+<title>Visual Snow Reader</title>
 <style>
   :root{
     --bg:#f3e9d8; --fg:#4a4036; --muted:#8b8073; --panel:#efe4d1;
@@ -35,9 +35,9 @@
 
   /* ================= shelf ================= */
   #shelf{min-height:100%; padding:calc(var(--top) + 1rem) 1rem calc(var(--bot) + 6.5rem)}
-  #shelfHead{display:flex; align-items:baseline; justify-content:space-between; margin:.5rem .25rem 1.4rem}
-  #shelfHead h1{font-size:1.6rem; margin:0; font-weight:600; letter-spacing:-.01em}
-  #shelfHead span{font-size:.8rem; color:var(--muted)}
+  #shelfHead{margin:.5rem .25rem 1.4rem}
+  #shelfHead h1{font-size:1.5rem; margin:0; font-weight:600; letter-spacing:-.015em; line-height:1.15}
+  #shelfHead span{display:block; font-size:.8rem; color:var(--muted); margin-top:.35rem}
   #grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr)); gap:1.1rem .9rem}
   .card{position:relative; text-align:left}
   .card .cov{
@@ -190,7 +190,7 @@
 
 <!-- ============ shelf ============ -->
 <main id="shelf" class="ui">
-  <div id="shelfHead"><h1>Reflow</h1><span id="count"></span></div>
+  <div id="shelfHead"><h1>Visual Snow Reader</h1><span id="count"></span></div>
   <div id="empty" class="hide">
     <b>Your shelf is empty</b>
     Add an EPUB and it stays here — with your place saved — so you never have to go looking for the file again.
@@ -283,7 +283,7 @@
 <script>
 "use strict";
 /* =========================================================================
-   Reflow — an offline EPUB reader that reflows text into short blocks.
+   Visual Snow Reader — an offline EPUB reader that reflows text into short blocks.
    No libraries: ZIP is parsed by hand, deflate via DecompressionStream.
    ========================================================================= */
 const $ = s => document.querySelector(s);
@@ -836,7 +836,7 @@ async function openBook(id){
     book=await loadEpub(await rec.blob.arrayBuffer());
     bookId=id;
     if(meta){ meta.opened=Date.now(); await put('books',meta); }
-    document.title=book.title+' — Reflow';
+    document.title=book.title+' — Visual Snow Reader';
     $('#btitle').textContent=book.author?book.title+' · '+book.author:book.title;
     buildToc();
     showReader();
@@ -859,7 +859,7 @@ function showShelf(){
   view='shelf';
   $('#reader').classList.add('hide'); $('#bar').classList.add('hide'); $('#pbar').classList.add('hide');
   $('#shelf').classList.remove('hide'); $('#addWrap').classList.remove('hide');
-  document.title='Reflow';
+  document.title='Visual Snow Reader';
   freeBook(); renderShelf();
   window.scrollTo(0,0);
 }
@@ -1104,6 +1104,26 @@ async function consumeSharedFile(){
   }catch(e){ return false; }
 }
 
+/* ============================ update notice ============================ */
+let updateAnnounced=false;
+async function announceUpdate(){
+  if(updateAnnounced) return;
+  updateAnnounced=true;
+  try{ (await caches.open('vsr-flags')).delete('./pending-update'); }catch(e){}
+  toast('Update ready \u2014 close and reopen the app');
+}
+async function checkForUpdate(){
+  try{
+    const c=await caches.open('vsr-flags');
+    if(await c.match('./pending-update')) announceUpdate();
+  }catch(e){}
+}
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message',e=>{
+    if(e.data && e.data.type==='updated') announceUpdate();
+  });
+}
+
 /* =============================== startup =============================== */
 (async function init(){
   syncControls(); applySettings();
@@ -1120,6 +1140,9 @@ async function consumeSharedFile(){
   }
   if('serviceWorker' in navigator){
     try{ await navigator.serviceWorker.register('./sw.js'); }catch(e){ console.warn('SW failed',e); }
+    // The background check that spots a new version finishes after startup,
+    // so look again a couple of times rather than only once.
+    checkForUpdate(); setTimeout(checkForUpdate,2500); setTimeout(checkForUpdate,8000);
   }
 })();
 </script>

@@ -1,6 +1,6 @@
-/* Reflow service worker — makes the app work with no network at all,
+/* Visual Snow Reader service worker — makes the app work with no network at all,
    and receives .epub files shared from other Android apps. */
-const VERSION = 'reflow-v1';
+const VERSION = 'vsr-v2';
 const SHELL = [
   './',
   './index.html',
@@ -22,10 +22,35 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k !== VERSION && k !== 'reflow-share').map(k => caches.delete(k)));
+    const keep = [VERSION, 'reflow-share', 'vsr-flags'];
+    await Promise.all(keys.filter(k => !keep.includes(k)).map(k => caches.delete(k)));
     await self.clients.claim();
   })());
 });
+
+/* Re-fetch the page in the background. If it really changed, tell any open
+   window so the user hears about an update instead of silently getting the
+   old copy on the next launch. */
+async function refreshShell(req) {
+  try {
+    const res = await fetch(req, { cache: 'no-cache' });
+    if (!res || !res.ok) return;
+    const forCache = res.clone();
+    const newText = await res.clone().text();
+    const c = await caches.open(VERSION);
+    const old = await c.match('./index.html');
+    const oldText = old ? await old.text() : '';
+    await c.put('./index.html', forCache);
+    if (oldText && oldText !== newText) {
+      // A flag outlives the race between this background fetch and the page's
+      // scripts starting up; the page clears it once it has said something.
+      const flags = await caches.open('vsr-flags');
+      await flags.put('./pending-update', new Response('1'));
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      windows.forEach(w => w.postMessage({ type: 'updated' }));
+    }
+  } catch (err) { /* offline: keep what we have */ }
+}
 
 self.addEventListener('fetch', e => {
   const req = e.request;
@@ -55,13 +80,19 @@ self.addEventListener('fetch', e => {
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
       const cached = await caches.match('./index.html');
-      const net = fetch(req).then(res => {
-        if (res && res.ok) caches.open(VERSION).then(c => c.put('./index.html', res.clone()));
+      if (cached) {
+        e.waitUntil(refreshShell(req));
+        return cached;
+      }
+      try {
+        const res = await fetch(req);
+        if (res && res.ok) (await caches.open(VERSION)).put('./index.html', res.clone());
         return res;
-      }).catch(() => null);
-      return cached || (await net) || new Response(
-        '<h1>Offline</h1><p>Reflow has not finished installing yet. Open it once with a connection.</p>',
-        { headers: { 'Content-Type': 'text/html' } });
+      } catch (err) {
+        return new Response(
+          '<h1>Offline</h1><p>Visual Snow Reader has not finished installing yet. Open it once with a connection.</p>',
+          { headers: { 'Content-Type': 'text/html' } });
+      }
     })());
     return;
   }

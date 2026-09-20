@@ -1,4 +1,4 @@
-# Reflow — installable EPUB reader
+# Visual Snow Reader — installable EPUB reader
 
 An EPUB reader that breaks walls of text into short blocks, with low-contrast tinted
 themes. Everything runs in the browser: no server, no accounts, no tracking, and your
@@ -43,8 +43,8 @@ somewhere on the web first. Any static host works. Two easy free ones:
 1. Open that URL in **Chrome**.
 2. Menu (⋮) → **Add to Home screen** — or **Install app**, if Chrome offers it.
 3. Open it from the home screen. It runs fullscreen, with no address bar.
-4. Tap **Add a book** and pick an `.epub`. You can also share an `.epub` to Reflow
-   from Files, Drive or your browser's downloads — Reflow appears in the share sheet.
+4. Tap **Add a book** and pick an `.epub`. You can also share an `.epub` to Visual Snow Reader
+   from Files, Drive or your browser's downloads — the app appears in the share sheet.
 
 After the first visit the app is cached, so it opens and reads with no connection.
 Updating later means re-uploading the files and reopening the app once online.
@@ -68,7 +68,7 @@ Settings apply to every book; your place is remembered per book.
 ## Things worth knowing
 
 - **DRM'd books won't open.** Files from Kindle (`.azw`, `.kfx`) or with Adobe DRM can
-  only be read by the vendor's own app. Reflow reads ordinary `.epub` files.
+  only be read by the vendor's own app. Visual Snow Reader reads ordinary `.epub` files.
 - **Your library lives in this browser's storage on this phone.** Uninstalling the app
   or clearing site data for the domain deletes it. The app asks Android for persistent
   storage so it isn't cleared automatically, but nothing syncs between devices.
