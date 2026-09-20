@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3e9d8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="An EPUB reader that breaks walls of text into short, breathable blocks.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>Reflow</title>
+<style>
+  :root{
+    --bg:#f3e9d8; --fg:#4a4036; --muted:#8b8073; --panel:#efe4d1;
+    --font:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+    --size:20px; --lh:1.75; --ls:0.01em; --ws:0.02em; --measure:38rem;
+    --pgap:0.85em; --origgap:1.9em; --align:left; --indent:0;
+    --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{height:100%; margin:0}
+  body{
+    background:var(--bg); color:var(--fg); font-family:var(--font);
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+    transition:background-color .25s ease,color .25s ease;
+    overscroll-behavior-y:none;
+  }
+  button,select,input{font:inherit; color:inherit}
+  button{background:none; border:0; cursor:pointer; padding:0}
+  .ui{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; letter-spacing:0; word-spacing:normal}
+  .hide{display:none!important}
+
+  /* ================= shelf ================= */
+  #shelf{min-height:100%; padding:calc(var(--top) + 1rem) 1rem calc(var(--bot) + 6.5rem)}
+  #shelfHead{display:flex; align-items:baseline; justify-content:space-between; margin:.5rem .25rem 1.4rem}
+  #shelfHead h1{font-size:1.6rem; margin:0; font-weight:600; letter-spacing:-.01em}
+  #shelfHead span{font-size:.8rem; color:var(--muted)}
+  #grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr)); gap:1.1rem .9rem}
+  .card{position:relative; text-align:left}
+  .card .cov{
+    width:100%; aspect-ratio:2/3; border-radius:9px; overflow:hidden; display:block;
+    background:color-mix(in srgb,var(--fg) 10%,transparent);
+    box-shadow:0 2px 10px rgba(0,0,0,.14); position:relative;
+  }
+  .card .cov img{width:100%; height:100%; object-fit:cover; display:block}
+  .card .ph{
+    width:100%; height:100%; display:flex; align-items:center; padding:.7rem;
+    font-size:.78rem; line-height:1.3; color:var(--muted); overflow:hidden;
+  }
+  .card .meta{margin-top:.5rem}
+  .card .t{font-size:.82rem; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .card .a{font-size:.72rem; color:var(--muted); margin-top:.15rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .card .pg{
+    position:absolute; left:0; right:0; bottom:0; height:3px;
+    background:color-mix(in srgb,var(--fg) 18%,transparent); border-radius:0 0 9px 9px; overflow:hidden;
+  }
+  .card .pg i{display:block; height:100%; background:color-mix(in srgb,var(--fg) 62%,transparent)}
+  .card .more{
+    position:absolute; top:.25rem; right:.25rem; width:2rem; height:2rem; border-radius:50%;
+    background:rgba(0,0,0,.42); color:#fff; font-size:1rem; line-height:2rem; text-align:center;
+  }
+  #empty{text-align:center; padding:3.5rem 1.5rem; color:var(--muted); line-height:1.6}
+  #empty b{display:block; color:var(--fg); font-size:1.05rem; margin-bottom:.5rem}
+  #addWrap{
+    position:fixed; left:0; right:0; bottom:0; padding:1rem 1rem calc(1rem + var(--bot));
+    background:linear-gradient(to top,var(--bg) 62%,transparent); z-index:20;
+  }
+  #add{
+    display:block; width:100%; max-width:26rem; margin:0 auto; padding:1rem; border-radius:13px;
+    background:color-mix(in srgb,var(--fg) 88%,var(--bg)); color:var(--bg); font-size:1rem; font-weight:500;
+  }
+  #add:active{transform:scale(.985)}
+
+  /* ================= reader ================= */
+  #bar{
+    position:fixed; top:0; left:0; right:0; z-index:40;
+    padding:calc(var(--top) + .35rem) .4rem .35rem;
+    display:flex; align-items:center; gap:.1rem; font-size:13px;
+    background:color-mix(in srgb,var(--bg) 92%,var(--fg) 4%);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid color-mix(in srgb,var(--fg) 11%,transparent);
+    transition:opacity .25s ease,transform .25s ease;
+  }
+  #bar.off{opacity:0; transform:translateY(-100%); pointer-events:none}
+  #bar button{padding:.55rem .6rem; border-radius:8px; color:var(--muted); line-height:1; min-width:2.6rem}
+  #bar button:active{background:color-mix(in srgb,var(--fg) 12%,transparent)}
+  #bar button:disabled{opacity:.28}
+  #btitle{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; color:var(--muted); padding:0 .2rem}
+  #pbar{position:fixed; top:0; left:0; height:2px; z-index:41; background:color-mix(in srgb,var(--fg) 42%,transparent); width:0; transition:width .2s}
+  #reader{padding:calc(var(--top) + 3.6rem) 1rem calc(var(--bot) + 40vh)}
+  #content{
+    max-width:var(--measure); margin:0 auto;
+    font-size:var(--size); line-height:var(--lh); letter-spacing:var(--ls); word-spacing:var(--ws);
+    text-align:var(--align); hyphens:none; -webkit-hyphens:none;
+  }
+  #content p{margin:0 0 var(--pgap)}
+  #content p.orig{margin-top:var(--origgap); text-indent:var(--indent)}
+  #content p.orig:first-child{margin-top:0}
+  #content h1,#content h2,#content h3,#content h4,#content h5,#content h6{
+    font-weight:600; line-height:1.3; margin:2.2em 0 1em; text-align:left; letter-spacing:0}
+  #content h1{font-size:1.45em} #content h2{font-size:1.26em} #content h3{font-size:1.1em}
+  #content h4,#content h5,#content h6{font-size:1em}
+  #content>:first-child{margin-top:0}
+  #content blockquote{margin:1.7em 0; padding-left:1em; border-left:2px solid color-mix(in srgb,var(--fg) 25%,transparent)}
+  #content img{max-width:100%; height:auto; display:block; margin:1.8em auto; border-radius:3px}
+  #content hr{border:0; border-top:1px solid color-mix(in srgb,var(--fg) 22%,transparent); margin:2.3em auto; width:35%}
+  #content ul,#content ol{margin:0 0 1.1em; padding-left:1.5em}
+  #content li{margin-bottom:.45em}
+  #content a{color:inherit; text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--fg) 35%,transparent); text-underline-offset:2px}
+  #content table{border-collapse:collapse; margin:1.5em 0; font-size:.9em; display:block; overflow-x:auto}
+  #content td,#content th{border:1px solid color-mix(in srgb,var(--fg) 22%,transparent); padding:.4em .55em}
+  #content figcaption{font-size:.85em; color:var(--muted); text-align:center; margin:-1em 0 1.8em}
+  #chapnav{max-width:var(--measure); margin:3rem auto 0; display:flex; gap:.7rem;
+    border-top:1px solid color-mix(in srgb,var(--fg) 13%,transparent); padding-top:1.4rem; font-size:.92rem}
+  #chapnav button{flex:1; padding:1rem .5rem; border-radius:11px; color:var(--muted);
+    background:color-mix(in srgb,var(--fg) 6%,transparent)}
+  #chapnav button:disabled{opacity:.3}
+
+  /* ================= sheets & drawers ================= */
+  #scrim{position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.34); opacity:0; pointer-events:none; transition:opacity .22s}
+  #scrim.on{opacity:1; pointer-events:auto}
+  .drawer{
+    position:fixed; top:0; bottom:0; width:min(23rem,90vw); z-index:60;
+    background:var(--panel); box-shadow:0 0 40px rgba(0,0,0,.25);
+    overflow-y:auto; overscroll-behavior:contain;
+    padding:calc(var(--top) + 1rem) 1.1rem calc(var(--bot) + 3rem);
+    transition:transform .27s cubic-bezier(.4,0,.2,1); font-size:14px;
+  }
+  #settings{right:0; transform:translateX(103%)} #settings.open{transform:none}
+  #toc{left:0; transform:translateX(-103%)} #toc.open{transform:none}
+  .drawer h2{font-size:.95rem; margin:0 0 1rem; display:flex; justify-content:space-between; align-items:center}
+  .drawer h2 button{color:var(--muted); font-size:1.5rem; padding:0 .4rem}
+  fieldset{border:0; border-top:1px solid color-mix(in srgb,var(--fg) 13%,transparent); margin:0; padding:1rem 0 .3rem}
+  legend{font-size:.7rem; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); padding-right:.4rem}
+  .rg{display:flex; flex-direction:column; gap:.35rem; margin-bottom:1.05rem}
+  .rg .h{display:flex; justify-content:space-between; align-items:baseline; gap:.5rem}
+  .rg .h span:last-child{color:var(--muted); font-size:.8rem; font-variant-numeric:tabular-nums; white-space:nowrap}
+  input[type=range]{width:100%; accent-color:var(--fg); margin:0; height:1.6rem}
+  select{width:100%; padding:.6rem .5rem; border-radius:9px;
+    border:1px solid color-mix(in srgb,var(--fg) 22%,transparent); background:color-mix(in srgb,var(--fg) 5%,transparent)}
+  .hint{color:var(--muted); font-size:.78rem; line-height:1.45; margin:-.3rem 0 1rem}
+  select+.hint{margin-top:.6rem}
+  .sws{display:grid; grid-template-columns:repeat(auto-fill,minmax(4.3rem,1fr)); gap:.45rem}
+  .sw{border-radius:9px; padding:.62rem .3rem; font-size:.72rem; border:2px solid transparent; text-align:center}
+  .sw.sel{border-color:color-mix(in srgb,var(--fg) 55%,transparent)}
+  .ck{display:flex; align-items:center; gap:.7rem; margin-bottom:.9rem; cursor:pointer; line-height:1.35}
+  .ck input{width:1.15rem; height:1.15rem; accent-color:var(--fg); margin:0; flex:none}
+  .cr{display:flex; gap:.6rem; align-items:center; margin-bottom:.9rem}
+  .cr input[type=color]{width:2.6rem; height:2.1rem; padding:0; border:1px solid color-mix(in srgb,var(--fg) 22%,transparent); border-radius:7px; background:none; flex:none}
+  .seg{display:flex; gap:.35rem}
+  .seg button{flex:1; padding:.6rem .3rem; border-radius:9px; font-size:.85rem; color:var(--muted);
+    border:1px solid color-mix(in srgb,var(--fg) 18%,transparent)}
+  .seg button.sel{background:color-mix(in srgb,var(--fg) 82%,var(--bg)); color:var(--bg); border-color:transparent}
+  .danger{width:100%; padding:.75rem; border-radius:9px; border:1px solid color-mix(in srgb,var(--fg) 20%,transparent); color:var(--muted); margin-top:.4rem}
+  #tocList{list-style:none; margin:0; padding:0}
+  #tocList button{display:block; width:100%; text-align:left; padding:.75rem .5rem; border-radius:8px; line-height:1.35; font-size:.9rem}
+  #tocList button.cur{background:color-mix(in srgb,var(--fg) 13%,transparent); font-weight:600}
+  #tocList li[data-d="2"] button{padding-left:1.4rem; font-size:.85rem; color:var(--muted)}
+  #tocList li[data-d="3"] button{padding-left:2.2rem; font-size:.83rem; color:var(--muted)}
+
+  #sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:70; background:var(--panel);
+    border-radius:16px 16px 0 0; padding:1.1rem 1.1rem calc(1.1rem + var(--bot));
+    transform:translateY(102%); transition:transform .25s cubic-bezier(.4,0,.2,1);
+    box-shadow:0 -6px 30px rgba(0,0,0,.2);
+  }
+  #sheet.open{transform:none}
+  #sheet h3{margin:0 0 .3rem; font-size:1rem}
+  #sheet p{margin:0 0 1rem; color:var(--muted); font-size:.85rem; line-height:1.5}
+  #sheet .acts{display:flex; flex-direction:column; gap:.5rem}
+  #sheet .acts button{padding:.9rem; border-radius:11px; background:color-mix(in srgb,var(--fg) 8%,transparent); font-size:.95rem}
+  #sheet .acts button.warn{background:color-mix(in srgb,#b4402f 82%,var(--bg)); color:#fff}
+
+  #toast{
+    position:fixed; left:50%; bottom:calc(2rem + var(--bot)); z-index:80; transform:translate(-50%,1rem);
+    background:color-mix(in srgb,var(--fg) 88%,var(--bg)); color:var(--bg);
+    padding:.65rem 1.05rem; border-radius:10px; font-size:.85rem; opacity:0; pointer-events:none;
+    transition:.22s; max-width:88vw; text-align:center;
+  }
+  #toast.on{opacity:1; transform:translate(-50%,0)}
+  #busy{position:fixed; inset:0; z-index:90; display:flex; align-items:center; justify-content:center;
+    background:color-mix(in srgb,var(--bg) 85%,transparent); font-size:.9rem; color:var(--muted)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ shelf ============ -->
+<main id="shelf" class="ui">
+  <div id="shelfHead"><h1>Reflow</h1><span id="count"></span></div>
+  <div id="empty" class="hide">
+    <b>Your shelf is empty</b>
+    Add an EPUB and it stays here — with your place saved — so you never have to go looking for the file again.
+  </div>
+  <div id="grid"></div>
+</main>
+<div id="addWrap" class="ui"><button id="add">Add a book</button></div>
+<input type="file" id="file" accept=".epub,application/epub+zip" multiple hidden>
+
+<!-- ============ reader ============ -->
+<div id="pbar" class="hide"></div>
+<div id="bar" class="ui hide">
+  <button id="bBack" aria-label="Back to shelf">‹ Shelf</button>
+  <button id="bToc" aria-label="Contents">☰</button>
+  <span id="btitle"></span>
+  <button id="bSet" aria-label="Reading settings">Aa</button>
+</div>
+<main id="reader" class="hide">
+  <div id="content"></div>
+  <div id="chapnav" class="ui">
+    <button id="navPrev">‹ Previous</button>
+    <button id="navNext">Next ›</button>
+  </div>
+</main>
+
+<div id="scrim"></div>
+
+<aside class="drawer ui" id="toc">
+  <h2>Contents <button data-close="1">×</button></h2>
+  <ul id="tocList"></ul>
+</aside>
+
+<aside class="drawer ui" id="settings">
+  <h2>Reading settings <button data-close="1">×</button></h2>
+
+  <fieldset><legend>Paragraph shape</legend>
+    <div class="rg"><div class="h"><span>Sentences per block</span><span id="vSent">2</span></div><input type="range" id="sSent" min="1" max="6" step="1"></div>
+    <div class="rg"><div class="h"><span>Leave paragraphs alone up to</span><span id="vMin">3 sent.</span></div><input type="range" id="sMin" min="1" max="8" step="1"></div>
+    <p class="hint">Short paragraphs and dialogue stay as the author wrote them; only longer ones get broken up.</p>
+    <div class="rg"><div class="h"><span>Break blocks longer than</span><span id="vCap">35 words</span></div><input type="range" id="sCap" min="0" max="8" step="1"></div>
+    <p class="hint">A single very long sentence is split at commas, dashes and semicolons so it never becomes a block of its own.</p>
+    <label class="ck"><input type="checkbox" id="cOrig"><span>Wider gap where the author's paragraph really ends</span></label>
+    <label class="ck"><input type="checkbox" id="cIndent"><span>Indent the first line of real paragraphs</span></label>
+  </fieldset>
+
+  <fieldset><legend>Colour</legend>
+    <div class="sws" id="sws"></div>
+    <div class="rg" style="margin-top:1rem"><div class="h"><span>Contrast</span><span id="vCon">80%</span></div><input type="range" id="sCon" min="35" max="100" step="1"></div>
+    <p class="hint">Lower contrast usually calms the static. Pure black on pure white is the worst case.</p>
+    <div class="cr"><input type="color" id="cBg"><label for="cBg" style="flex:1">Custom background</label></div>
+    <div class="cr"><input type="color" id="cFg"><label for="cFg" style="flex:1">Custom text</label></div>
+  </fieldset>
+
+  <fieldset><legend>Type</legend>
+    <select id="fFam" aria-label="Typeface">
+      <option value='Georgia,"Iowan Old Style","Palatino Linotype",serif'>Georgia (serif)</option>
+      <option value='"Iowan Old Style","Palatino Linotype",Palatino,serif'>Palatino (serif)</option>
+      <option value='Charter,"Bitstream Charter",Cambria,Georgia,serif'>Charter (serif)</option>
+      <option value='Roboto,system-ui,-apple-system,sans-serif'>Roboto (sans)</option>
+      <option value='system-ui,-apple-system,"Segoe UI",sans-serif'>System (sans)</option>
+      <option value='Verdana,Geneva,sans-serif'>Verdana (wide sans)</option>
+      <option value='"Atkinson Hyperlegible",Verdana,sans-serif'>Atkinson Hyperlegible*</option>
+      <option value='OpenDyslexic,Verdana,sans-serif'>OpenDyslexic*</option>
+      <option value='ui-monospace,Consolas,monospace'>Monospace</option>
+    </select>
+    <p class="hint">* only if that font is installed on this phone.</p>
+    <div class="rg"><div class="h"><span>Text size</span><span id="vSize">20px</span></div><input type="range" id="sSize" min="14" max="34" step="1"></div>
+    <div class="rg"><div class="h"><span>Line spacing</span><span id="vLh">1.75</span></div><input type="range" id="sLh" min="120" max="260" step="5"></div>
+    <div class="rg"><div class="h"><span>Letter spacing</span><span id="vLs">0.01em</span></div><input type="range" id="sLs" min="-2" max="16" step="1"></div>
+    <div class="rg"><div class="h"><span>Word spacing</span><span id="vWs">0.02em</span></div><input type="range" id="sWs" min="0" max="50" step="1"></div>
+    <div class="rg"><div class="h"><span>Column width</span><span id="vMeas">38rem</span></div><input type="range" id="sMeas" min="20" max="62" step="1"></div>
+    <div class="rg"><div class="h"><span>Gap between blocks</span><span id="vGap">0.85em</span></div><input type="range" id="sGap" min="0" max="30" step="1"></div>
+    <div class="seg" id="segAlign"><button data-v="left">Ragged</button><button data-v="justify">Justified</button></div>
+  </fieldset>
+
+  <fieldset><legend>Storage</legend>
+    <p class="hint" id="storageInfo">—</p>
+    <button class="danger" id="reset">Reset settings to defaults</button>
+  </fieldset>
+</aside>
+
+<div id="sheet" class="ui">
+  <h3 id="sheetT"></h3><p id="sheetP"></p>
+  <div class="acts" id="sheetA"></div>
+</div>
+
+<div id="toast" class="ui"></div>
+<div id="busy" class="ui hide">Opening…</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   Reflow — an offline EPUB reader that reflows text into short blocks.
+   No libraries: ZIP is parsed by hand, deflate via DecompressionStream.
+   ========================================================================= */
+const $ = s => document.querySelector(s);
+const el = (t,c) => { const n = document.createElement(t); if(c) n.className = c; return n; };
+let toastT;
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),2000); }
+const busy = on => $('#busy').classList.toggle('hide', !on);
+
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:JSON.parse(v);}catch(e){return d;} },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+
+/* ============================= IndexedDB ============================= */
+const DB_NAME='reflow', DB_VER=1;
+let _db=null;
+function db(){
+  if(_db) return Promise.resolve(_db);
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DB_NAME,DB_VER);
+    r.onupgradeneeded=()=>{
+      const d=r.result;
+      if(!d.objectStoreNames.contains('books'))    d.createObjectStore('books',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('files'))    d.createObjectStore('files',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('progress')) d.createObjectStore('progress',{keyPath:'id'});
+    };
+    r.onsuccess=()=>{ _db=r.result; res(_db); };
+    r.onerror=()=>rej(r.error);
+  });
+}
+function get(storeName,key){
+  return db().then(d=>new Promise((res,rej)=>{
+    const q=d.transaction(storeName,'readonly').objectStore(storeName).get(key);
+    q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error);
+  }));
+}
+function getAll(storeName){
+  return db().then(d=>new Promise((res,rej)=>{
+    const q=d.transaction(storeName,'readonly').objectStore(storeName).getAll();
+    q.onsuccess=()=>res(q.result||[]); q.onerror=()=>rej(q.error);
+  }));
+}
+function put(storeName,val){
+  return db().then(d=>new Promise((res,rej)=>{
+    const t=d.transaction(storeName,'readwrite'); t.objectStore(storeName).put(val);
+    t.oncomplete=()=>res(); t.onerror=()=>rej(t.error);
+  }));
+}
+function del(storeName,key){
+  return db().then(d=>new Promise((res,rej)=>{
+    const t=d.transaction(storeName,'readwrite'); t.objectStore(storeName).delete(key);
+    t.oncomplete=()=>res(); t.onerror=()=>rej(t.error);
+  }));
+}
+
+/* ================================ ZIP ================================ */
+const u16=(d,o)=>d.getUint16(o,true), u32=(d,o)=>d.getUint32(o,true);
+async function inflateRaw(bytes){
+  if(typeof DecompressionStream==='undefined') throw new Error('This browser lacks DecompressionStream.');
+  const s=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(s).arrayBuffer());
+}
+async function readZip(buffer){
+  const bytes=new Uint8Array(buffer), view=new DataView(buffer);
+  let eocd=-1; const from=Math.max(0,bytes.length-66000);
+  for(let i=bytes.length-22;i>=from;i--){ if(view.getUint32(i,true)===0x06054b50){ eocd=i; break; } }
+  if(eocd<0) throw new Error('Not a ZIP/EPUB file.');
+  let count=u16(view,eocd+10), cdOff=u32(view,eocd+16);
+  if(cdOff===0xffffffff||count===0xffff){
+    for(let i=eocd-20;i>=from;i--){
+      if(view.getUint32(i,true)===0x07064b50){
+        const z=Number(view.getBigUint64(i+8,true));
+        if(view.getUint32(z,true)===0x06064b50){ count=Number(view.getBigUint64(z+32,true)); cdOff=Number(view.getBigUint64(z+48,true)); }
+        break;
+      }
+    }
+  }
+  const dec=new TextDecoder('utf-8'); const entries=new Map(); let p=cdOff;
+  for(let i=0;i<count;i++){
+    if(u32(view,p)!==0x02014b50) break;
+    const method=u16(view,p+10), cSize=u32(view,p+20), nLen=u16(view,p+28), eLen=u16(view,p+30), kLen=u16(view,p+32), lho=u32(view,p+42);
+    entries.set(dec.decode(bytes.subarray(p+46,p+46+nLen)),{method,cSize,lho});
+    p+=46+nLen+eLen+kLen;
+  }
+  if(!entries.size) throw new Error('The archive is empty.');
+  const cache=new Map();
+  async function raw(name){
+    if(cache.has(name)) return cache.get(name);
+    const e=entries.get(name); if(!e) return null;
+    if(u32(view,e.lho)!==0x04034b50) throw new Error('Corrupt entry: '+name);
+    const start=e.lho+30+u16(view,e.lho+26)+u16(view,e.lho+28);
+    const comp=bytes.subarray(start,start+e.cSize);
+    let out;
+    if(e.method===0) out=comp;
+    else if(e.method===8) out=await inflateRaw(comp);
+    else throw new Error('Unsupported compression in '+name);
+    cache.set(name,out); return out;
+  }
+  return { names:[...entries.keys()], has:n=>entries.has(n), bytes:raw,
+           text:async n=>{ const b=await raw(n); return b?new TextDecoder('utf-8').decode(b):null; } };
+}
+
+/* ================================ EPUB ================================ */
+const dirOf = p => { const i=p.lastIndexOf('/'); return i<0?'':p.slice(0,i+1); };
+function resolvePath(base,rel){
+  if(/^[a-z]+:/i.test(rel)) return rel;
+  const parts=(base+rel.replace(/^\.\//,'')).split('/'); const out=[];
+  for(const s of parts){ if(s===''||s==='.') continue; if(s==='..') out.pop(); else out.push(s); }
+  return out.join('/');
+}
+function parseXML(s){ const d=new DOMParser().parseFromString(s,'application/xml'); return d.querySelector('parsererror')?new DOMParser().parseFromString(s,'text/html'):d; }
+function parseDoc(s){ let d=new DOMParser().parseFromString(s,'application/xhtml+xml'); if(d.querySelector('parsererror')) d=new DOMParser().parseFromString(s,'text/html'); return d; }
+
+async function loadEpub(buffer){
+  const zip=await readZip(buffer);
+  const cx=await zip.text('META-INF/container.xml');
+  let opfPath=null;
+  if(cx){ const rf=parseXML(cx).querySelector('rootfile'); if(rf) opfPath=rf.getAttribute('full-path'); }
+  if(!opfPath) opfPath=zip.names.find(n=>/\.opf$/i.test(n));
+  if(!opfPath) throw new Error('No OPF package file — is this really an EPUB?');
+
+  const base=dirOf(opfPath), opf=parseXML(await zip.text(opfPath));
+  const title=((opf.querySelector('metadata title, title')||{}).textContent||'Untitled').trim();
+  const author=((opf.querySelector('metadata creator, creator')||{}).textContent||'').trim();
+
+  const manifest=new Map();
+  opf.querySelectorAll('manifest > item').forEach(it=>{
+    const id=it.getAttribute('id');
+    manifest.set(id,{ id, href:resolvePath(base,decodeURIComponent(it.getAttribute('href')||'')),
+                      type:it.getAttribute('media-type')||'', props:it.getAttribute('properties')||'' });
+  });
+  const spine=[];
+  opf.querySelectorAll('spine > itemref').forEach(ir=>{
+    const m=manifest.get(ir.getAttribute('idref'));
+    if(m && zip.has(m.href)) spine.push(m);
+  });
+  if(!spine.length) throw new Error('No readable chapters in the spine.');
+
+  const hrefToSpine=h=>{ const c=h.split('#')[0]; return { idx:spine.findIndex(s=>s.href===c), anchor:h.includes('#')?h.split('#')[1]:null }; };
+
+  /* ---- cover ---- */
+  let coverHref=null;
+  const cim=[...manifest.values()].find(m=>/cover-image/.test(m.props));
+  if(cim) coverHref=cim.href;
+  if(!coverHref){
+    const mt=[...opf.querySelectorAll('metadata meta, meta')].find(m=>(m.getAttribute('name')||'')==='cover');
+    const it=mt && manifest.get(mt.getAttribute('content'));
+    if(it && /^image\//.test(it.type)) coverHref=it.href;
+  }
+  if(!coverHref){
+    const g=[...manifest.values()].find(m=>/^image\//.test(m.type) && /cover/i.test(m.href));
+    if(g) coverHref=g.href;
+  }
+  if(!coverHref){
+    // no declared cover: fall back to the first image on the first page
+    try{
+      const d=parseDoc(await zip.text(spine[0].href)||'');
+      const im=d.querySelector('img, image');
+      const raw=im && (im.getAttribute('src')||im.getAttribute('xlink:href')||im.getAttribute('href'));
+      if(raw && !/^data:/.test(raw)){
+        const full=resolvePath(dirOf(spine[0].href),decodeURIComponent(raw.split('#')[0]));
+        if(zip.has(full)) coverHref=full;
+      }
+    }catch(e){}
+  }
+
+  /* ---- toc ---- */
+  let toc=[];
+  const navItem=[...manifest.values()].find(m=>/\bnav\b/.test(m.props));
+  const spineEl=opf.querySelector('spine'); const ncxId=spineEl&&spineEl.getAttribute('toc');
+  const ncxItem=(ncxId&&manifest.get(ncxId))||[...manifest.values()].find(m=>/ncx/.test(m.type));
+
+  if(navItem && zip.has(navItem.href)){
+    const nd=parseDoc(await zip.text(navItem.href)), nb=dirOf(navItem.href);
+    const navEl=[...nd.querySelectorAll('nav')].find(n=>((n.getAttribute('epub:type')||n.getAttribute('type')||'').includes('toc')))||nd.querySelector('nav');
+    if(navEl){
+      const walk=(list,depth)=>{
+        [...list.children].forEach(li=>{
+          if(li.tagName.toLowerCase()!=='li') return;
+          const a=li.querySelector(':scope > a, :scope > span');
+          if(a){
+            const raw=a.getAttribute('href'), label=(a.textContent||'').trim();
+            if(label && raw){ const t=hrefToSpine(resolvePath(nb,decodeURIComponent(raw))); if(t.idx>=0) toc.push({label,idx:t.idx,anchor:t.anchor,depth}); }
+          }
+          const sub=li.querySelector(':scope > ol, :scope > ul'); if(sub) walk(sub,depth+1);
+        });
+      };
+      const root=navEl.querySelector('ol, ul'); if(root) walk(root,1);
+    }
+  }
+  if(!toc.length && ncxItem && zip.has(ncxItem.href)){
+    const nx=parseXML(await zip.text(ncxItem.href)), nb=dirOf(ncxItem.href);
+    const walk=(parent,depth)=>{
+      [...parent.children].forEach(np=>{
+        if(np.nodeName.toLowerCase().replace(/^.*:/,'')!=='navpoint') return;
+        const label=((np.querySelector('navLabel > text, text')||{}).textContent||'').trim();
+        const cnt=np.querySelector('content'), raw=cnt&&cnt.getAttribute('src');
+        if(label && raw){ const t=hrefToSpine(resolvePath(nb,decodeURIComponent(raw))); if(t.idx>=0) toc.push({label,idx:t.idx,anchor:t.anchor,depth}); }
+        walk(np,depth+1);
+      });
+    };
+    const map=nx.querySelector('navMap'); if(map) walk(map,1);
+  }
+  return { zip, title, author, spine, toc, manifest, hrefToSpine, coverHref };
+}
+
+/* ========================= sentence detection ========================= */
+const ABBR=new Set(`mr mrs ms dr prof st jr sr vs etc fig figs vol vols no nos approx cf ed eds pp op cit ibid viz resp
+inc ltd corp dept univ est al ave blvd rd sq ft mt gen col capt sgt lt hon rev messrs mme mlle
+bzw usw ggf evtl inkl exkl sog vgl abb nr hr fr dipl bspw ca zzgl abs art bd bes bzgl dgl ebd
+einschl entspr geb gedr ggfs jhd kap lfd lt max min mrd mio mwst nachm num od pers phil rspr
+s u v z d h e g i tel str hrsg anm bearb`.split(/\s+/).filter(Boolean));
+const OPENERS=`"'«»„“”‚‘'"-—–([{`;
+
+function sentenceCuts(text){
+  const cuts=[], len=text.length;
+  for(let i=0;i<len;i++){
+    const ch=text[i];
+    if(ch!=='.'&&ch!=='!'&&ch!=='?'&&ch!=='…') continue;
+    let j=i;
+    while(j+1<len && '.!?…'.indexOf(text[j+1])>=0) j++;
+    while(j+1<len && `"'»”’)]›}`.indexOf(text[j+1])>=0) j++;
+    if(j+1>=len) break;
+    if(!/\s/.test(text[j+1])){ i=j; continue; }
+    let k=j+1; while(k<len && /\s/.test(text[k])) k++;
+    if(k>=len) break;
+    const next=text[k];
+    if(!(/[A-ZÄÖÜÀ-ÞŁŃŚŹŻ0-9]/.test(next) || OPENERS.indexOf(next)>=0)){ i=j; continue; }
+    if(ch==='.'){
+      const m=text.slice(Math.max(0,i-24),i).match(/([\p{L}\p{N}.'’-]+)$/u);
+      if(m){
+        const tok=m[1], bare=tok.replace(/\./g,'').toLowerCase();
+        if(/^\d{1,4}$/.test(tok)){ i=j; continue; }
+        if(/^\p{Lu}$/u.test(tok)){ i=j; continue; }
+        if(bare.length<=5 && ABBR.has(bare)){ i=j; continue; }
+      }
+    }
+    cuts.push(k); i=k-1;
+  }
+  return cuts;
+}
+function clauseCuts(text,from,to){
+  const cuts=[];
+  for(let i=from;i<to-1;i++){
+    const c=text[i];
+    if(c!==','&&c!==';'&&c!==':'&&c!=='—'&&c!=='–') continue;
+    if(!/\s/.test(text[i+1])) continue;
+    let k=i+1; while(k<to && /\s/.test(text[k])) k++;
+    if(k>=to) break;
+    cuts.push(k);
+  }
+  return cuts;
+}
+const countWords=(t,a,b)=>(t.slice(a,b).match(/\S+/g)||[]).length;
+
+/* ============================== reflow ============================== */
+function textMap(root){
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const nodes=[]; let pos=0,n;
+  while((n=w.nextNode())){ const l=n.nodeValue.length; nodes.push({node:n,start:pos,end:pos+l}); pos+=l; }
+  return {nodes,total:pos};
+}
+function locate(nodes,off){
+  for(const e of nodes){ if(off<e.end) return {node:e.node,off:off-e.start}; }
+  const last=nodes[nodes.length-1]; return {node:last.node,off:last.node.nodeValue.length};
+}
+function locateEnd(nodes,off){
+  for(let i=0;i<nodes.length;i++){
+    const e=nodes[i];
+    if(off<e.end){
+      if(off===e.start && i>0){ const p=nodes[i-1]; return {node:p.node,off:p.node.nodeValue.length}; }
+      return {node:e.node,off:off-e.start};
+    }
+  }
+  const last=nodes[nodes.length-1]; return {node:last.node,off:last.node.nodeValue.length};
+}
+/* cloneContents() only reaches the range's common ancestor, so a cut inside
+   <em> would lose the italics — rebuild the inline chain up to the paragraph. */
+function cloneWithAncestors(range,stopAt){
+  let frag=range.cloneContents();
+  let anc=range.commonAncestorContainer;
+  if(anc.nodeType===3) anc=anc.parentNode;
+  let guard=0;
+  while(anc && anc!==stopAt && guard++<24){
+    const wrap=anc.cloneNode(false);
+    if(wrap.removeAttribute) wrap.removeAttribute('id');
+    wrap.appendChild(frag);
+    frag=document.createDocumentFragment(); frag.appendChild(wrap);
+    anc=anc.parentNode;
+  }
+  return frag;
+}
+function reflowParagraph(p,cfg){
+  const {nodes}=textMap(p);
+  if(!nodes.length) return null;
+  const text=nodes.map(x=>x.node.nodeValue).join('');
+  if(!text.trim()) return null;
+  const cuts=sentenceCuts(text), nSent=cuts.length+1;
+  let kept=[];
+  if(nSent>cfg.minSentences && cfg.perBlock<nSent) kept=cuts.filter((c,i)=>(i+1)%cfg.perBlock===0);
+  if(cfg.wordCap>0){
+    const bounds=[0,...kept,text.length], extra=[];
+    for(let b=0;b<bounds.length-1;b++){
+      const a=bounds[b], z=bounds[b+1];
+      if(countWords(text,a,z)<=cfg.wordCap) continue;
+      let last=a;
+      for(const c of clauseCuts(text,a,z)){
+        if(countWords(text,last,c)>=cfg.wordCap*0.75){ extra.push(c); last=c; }
+      }
+    }
+    kept=[...new Set([...kept,...extra])].sort((x,y)=>x-y);
+  }
+  if(!kept.length) return null;
+  const out=[], bounds=[0,...kept,text.length];
+  for(let b=0;b<bounds.length-1;b++){
+    let a=bounds[b], z=bounds[b+1];
+    while(a<z && /\s/.test(text[a])) a++;
+    while(z>a && /\s/.test(text[z-1])) z--;
+    if(a>=z) continue;
+    const r=document.createRange(), s=locate(nodes,a), e=locateEnd(nodes,z);
+    try{ r.setStart(s.node,s.off); r.setEnd(e.node,e.off); }catch(err){ continue; }
+    const np=el('p', b===0?'orig':'cont');
+    np.appendChild(cloneWithAncestors(r,p));
+    np.querySelectorAll('em,i,strong,b,u,s,sup,sub,code,a').forEach(x=>{
+      if(!x.textContent.trim() && !x.querySelector('img')) x.remove();
+    });
+    if(np.textContent.trim()) out.push(np);
+  }
+  if(out.length<2) return null;
+  if(p.id) out[0].id=p.id;
+  return out;
+}
+function applyReflow(container,cfg){
+  for(const p of [...container.querySelectorAll('p')]){
+    if(p.querySelector('img')) continue;
+    const parts=reflowParagraph(p,cfg);
+    if(!parts) continue;
+    const f=document.createDocumentFragment();
+    parts.forEach(x=>f.appendChild(x));
+    p.replaceWith(f);
+  }
+}
+
+/* ============================= sanitising ============================= */
+const KEEP=new Set(['p','h1','h2','h3','h4','h5','h6','blockquote','ul','ol','li','em','i','strong','b','u','s','sup','sub','br','hr','img','a','figure','figcaption','table','thead','tbody','tr','td','th','small','cite','q','code','pre','dl','dt','dd','section','article','div','span','header','footer','main','body','aside','nav']);
+const BLOCKISH=new Set(['p','h1','h2','h3','h4','h5','h6','blockquote','ul','ol','li','figure','table','hr','div','section','article','pre','dl']);
+const UNWRAP=new Set(['div','section','article','main','header','footer','aside','nav','body']);
+
+function cleanInto(src,dst){
+  for(const node of [...src.childNodes]){
+    if(node.nodeType===3){ dst.appendChild(document.createTextNode(node.nodeValue.replace(/\s+/g,' '))); continue; }
+    if(node.nodeType!==1) continue;
+    const tag=node.tagName.toLowerCase().replace(/^.*:/,'');
+    if(tag==='script'||tag==='style'||tag==='link'||tag==='head'||tag==='title') continue;
+    if(tag==='svg'){
+      const im=node.querySelector('image'); const h=im&&(im.getAttribute('xlink:href')||im.getAttribute('href'));
+      if(h){ const img=el('img'); img.dataset.src=h; img.alt=''; dst.appendChild(img); }
+      continue;
+    }
+    if(tag==='img'||tag==='image'){
+      const src2=node.getAttribute('src')||node.getAttribute('xlink:href')||node.getAttribute('href');
+      if(!src2) continue;
+      const img=el('img'); img.dataset.src=src2; img.alt=node.getAttribute('alt')||'';
+      dst.appendChild(img); continue;
+    }
+    if(tag==='br'||tag==='hr'){ dst.appendChild(el(tag)); continue; }
+    if(!KEEP.has(tag)){ cleanInto(node,dst); continue; }
+    let outTag=tag;
+    if(UNWRAP.has(tag)){
+      const hasBlock=[...node.children].some(c=>BLOCKISH.has(c.tagName.toLowerCase().replace(/^.*:/,'')));
+      if(hasBlock || !node.textContent.trim()){ cleanInto(node,dst); continue; }
+      outTag='p';
+    }
+    if(tag==='span'||tag==='q'||tag==='cite'||tag==='small'){ cleanInto(node,dst); continue; }
+    const out=el(outTag);
+    if(outTag==='a'){ const h=node.getAttribute('href'); if(h) out.dataset.href=h; }
+    if(node.id) out.id=node.id;
+    cleanInto(node,out);
+    if(outTag==='p' && !out.textContent.trim() && !out.querySelector('img')) continue;
+    dst.appendChild(out);
+  }
+}
+
+/* ============================== settings ============================== */
+const DEFAULTS={ theme:'Sepia', contrast:80, customBg:'', customFg:'',
+  font:'Georgia,"Iowan Old Style","Palatino Linotype",serif',
+  size:20, lh:175, ls:1, ws:2, measure:38, gap:85, align:'left',
+  perBlock:2, minSentences:3, capIdx:4, origGap:true, indent:false };
+const CAPS=[0,20,25,30,35,45,55,70,90];
+const THEMES=[
+  {name:'Sepia',bg:'#f3e9d8',fg:'#4a4036'},{name:'Linen',bg:'#ece7dd',fg:'#474441'},
+  {name:'Sage', bg:'#e2e8dd',fg:'#3d463a'},{name:'Mist', bg:'#e3e7ea',fg:'#3e464b'},
+  {name:'Rose', bg:'#f0e4e2',fg:'#4c403e'},{name:'Sand', bg:'#eae3d3',fg:'#4b443a'},
+  {name:'Dim',  bg:'#2c2b29',fg:'#b6afa3'},{name:'Slate',bg:'#262b31',fg:'#a8b1ba'},
+  {name:'Ink',  bg:'#20232a',fg:'#9aa2ae'},{name:'Cocoa',bg:'#2b2522',fg:'#bdae9f'},
+  {name:'Moss', bg:'#262b26',fg:'#a9b3a4'},{name:'Plum', bg:'#2a2530',fg:'#b0a7b8'}
+];
+let S=Object.assign({},DEFAULTS,store.get('reflow.settings',{}));
+
+function hex2rgb(h){ h=h.replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join('');
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+const rgb2hex=a=>'#'+a.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+const mix=(a,b,t)=>rgb2hex(hex2rgb(a).map((v,i)=>v+(hex2rgb(b)[i]-v)*t));
+
+function applySettings(){
+  const th=THEMES.find(t=>t.name===S.theme)||THEMES[0];
+  const bg=S.customBg||th.bg, fgFull=S.customFg||th.fg;
+  const fg=mix(fgFull,bg,1-S.contrast/100);
+  const r=document.documentElement.style;
+  r.setProperty('--bg',bg); r.setProperty('--fg',fg);
+  r.setProperty('--muted',mix(fg,bg,0.42));
+  r.setProperty('--panel',mix(bg,fg,0.06));
+  r.setProperty('--font',S.font);
+  r.setProperty('--size',S.size+'px');
+  r.setProperty('--lh',(S.lh/100).toFixed(2));
+  r.setProperty('--ls',(S.ls/100).toFixed(3)+'em');
+  r.setProperty('--ws',(S.ws/100).toFixed(3)+'em');
+  r.setProperty('--measure',S.measure+'rem');
+  r.setProperty('--pgap',(S.gap/100).toFixed(2)+'em');
+  r.setProperty('--origgap',S.origGap?((S.gap/100)*2.2+0.5).toFixed(2)+'em':(S.gap/100).toFixed(2)+'em');
+  r.setProperty('--align',S.align);
+  r.setProperty('--indent',S.indent?'1.4em':'0');
+  document.querySelector('meta[name="theme-color"]').content=bg;
+  store.set('reflow.settings',S);
+}
+
+/* =============================== state =============================== */
+let book=null, bookId=null, chapterIdx=0, cleanCache=new Map(), blobUrls=new Map();
+let view='shelf', barLocked=false;
+
+function freeBook(){
+  blobUrls.forEach(u=>URL.revokeObjectURL(u));
+  blobUrls=new Map(); cleanCache=new Map(); book=null; bookId=null;
+}
+
+/* =============================== shelf =============================== */
+async function renderShelf(){
+  const books=(await getAll('books')).sort((a,b)=>(b.opened||b.added||0)-(a.opened||a.added||0));
+  const prog=await getAll('progress');
+  const pm=new Map(prog.map(p=>[p.id,p]));
+  const g=$('#grid'); g.innerHTML='';
+  $('#empty').classList.toggle('hide',books.length>0);
+  $('#count').textContent=books.length?books.length+(books.length===1?' book':' books'):'';
+  for(const b of books){
+    const card=el('div','card');
+    const cov=el('button','cov');
+    if(b.cover){
+      const img=el('img'); img.src=URL.createObjectURL(b.cover); img.alt='';
+      img.decoding='async'; cov.appendChild(img);
+    }else{
+      const ph=el('div','ph'); ph.textContent=b.title; cov.appendChild(ph);
+    }
+    const p=pm.get(b.id);
+    if(p && b.spineCount){
+      const bar=el('div','pg'); const i=el('i');
+      i.style.width=Math.min(100,((p.idx+(p.ratio||0))/b.spineCount)*100).toFixed(1)+'%';
+      bar.appendChild(i); cov.appendChild(bar);
+    }
+    cov.addEventListener('click',()=>openBook(b.id));
+    const more=el('button','more'); more.textContent='⋯'; more.setAttribute('aria-label','Book options');
+    more.addEventListener('click',e=>{ e.stopPropagation(); bookMenu(b); });
+    const meta=el('div','meta');
+    const t=el('div','t'); t.textContent=b.title;
+    const a=el('div','a'); a.textContent=b.author||'';
+    meta.append(t,a);
+    card.append(cov,more,meta);
+    g.appendChild(card);
+  }
+}
+
+function showSheet(title,msg,actions){
+  $('#sheetT').textContent=title; $('#sheetP').textContent=msg||'';
+  const a=$('#sheetA'); a.innerHTML='';
+  actions.forEach(act=>{
+    const b=el('button',act.warn?'warn':'');
+    b.textContent=act.label;
+    b.addEventListener('click',()=>{ closeOverlays(); act.fn&&act.fn(); });
+    a.appendChild(b);
+  });
+  showOverlay($('#sheet'));
+}
+function bookMenu(b){
+  showSheet(b.title, b.author||'', [
+    { label:'Read', fn:()=>openBook(b.id) },
+    { label:'Reset my place in this book', fn:async()=>{ await del('progress',b.id); renderShelf(); toast('Progress reset'); } },
+    { label:'Remove from shelf', warn:true, fn:()=>confirmRemove(b) }
+  ]);
+}
+function confirmRemove(b){
+  setTimeout(()=>showSheet('Remove “'+b.title+'”?','The file and your place in it are deleted from this phone. This cannot be undone.',[
+    { label:'Remove', warn:true, fn:async()=>{
+        await del('books',b.id); await del('files',b.id); await del('progress',b.id);
+        renderShelf(); toast('Removed');
+      } },
+    { label:'Keep it' }
+  ]),260);
+}
+
+/* ============================ adding books ============================ */
+async function hashOf(buffer){
+  try{
+    const h=await crypto.subtle.digest('SHA-256',buffer);
+    return [...new Uint8Array(h).slice(0,16)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }catch(e){ return 'b'+buffer.byteLength+'-'+Date.now().toString(36); }
+}
+async function addFiles(list){
+  const files=[...list].filter(Boolean);
+  if(!files.length) return;
+  busy(true);
+  let added=0, dupes=0, failed=[];
+  for(const f of files){
+    try{
+      const buf=await f.arrayBuffer();
+      const id=await hashOf(buf);
+      if(await get('books',id)){ dupes++; continue; }
+      const ep=await loadEpub(buf);
+      let cover=null;
+      if(ep.coverHref && ep.zip.has(ep.coverHref)){
+        const cb=await ep.zip.bytes(ep.coverHref);
+        if(cb) cover=new Blob([cb],{type:guessType(ep.coverHref)});
+      }
+      await put('files',{id,blob:new Blob([buf],{type:'application/epub+zip'})});
+      await put('books',{id,title:ep.title,author:ep.author,added:Date.now(),opened:Date.now(),
+                         size:f.size,spineCount:ep.spine.length,cover});
+      added++;
+    }catch(e){ console.error(e); failed.push((f.name||'file')+': '+e.message); }
+  }
+  busy(false);
+  await renderShelf();
+  if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+  updateStorageInfo();
+  if(failed.length) showSheet('Could not add '+failed.length+(failed.length===1?' file':' files'),
+    failed.join('\n')+'\n\nBooks with DRM (Adobe or Kindle) cannot be opened by any reader other than the vendor’s own app.',[{label:'OK'}]);
+  else if(added) toast(added===1?'Added':added+' books added');
+  else if(dupes) toast(dupes===1?'Already on your shelf':'Already on your shelf');
+}
+function guessType(p){
+  const e=(p.split('.').pop()||'').toLowerCase();
+  return {jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',svg:'image/svg+xml',webp:'image/webp',avif:'image/avif'}[e]||'application/octet-stream';
+}
+
+/* ============================== reading ============================== */
+async function openBook(id){
+  busy(true);
+  try{
+    const rec=await get('files',id);
+    if(!rec) throw new Error('The file is missing from storage.');
+    const meta=await get('books',id);
+    freeBook();
+    book=await loadEpub(await rec.blob.arrayBuffer());
+    bookId=id;
+    if(meta){ meta.opened=Date.now(); await put('books',meta); }
+    document.title=book.title+' — Reflow';
+    $('#btitle').textContent=book.author?book.title+' · '+book.author:book.title;
+    buildToc();
+    showReader();
+    const p=await get('progress',id);
+    if(p && p.idx<book.spine.length) await render(p.idx,null,p.ratio);
+    else await render(0);
+  }catch(e){
+    console.error(e);
+    showSheet('Could not open this book',e.message,[{label:'OK'}]);
+  }finally{ busy(false); }
+}
+function showReader(){
+  view='reader';
+  $('#shelf').classList.add('hide'); $('#addWrap').classList.add('hide');
+  $('#reader').classList.remove('hide'); $('#bar').classList.remove('hide'); $('#pbar').classList.remove('hide');
+  $('#bar').classList.remove('off');
+  if(!history.state || history.state.v!=='reader') history.pushState({v:'reader'},'');
+}
+function showShelf(){
+  view='shelf';
+  $('#reader').classList.add('hide'); $('#bar').classList.add('hide'); $('#pbar').classList.add('hide');
+  $('#shelf').classList.remove('hide'); $('#addWrap').classList.remove('hide');
+  document.title='Reflow';
+  freeBook(); renderShelf();
+  window.scrollTo(0,0);
+}
+
+async function blobFor(path){
+  if(blobUrls.has(path)) return blobUrls.get(path);
+  const b=await book.zip.bytes(path);
+  if(!b) return null;
+  const url=URL.createObjectURL(new Blob([b],{type:guessType(path)}));
+  blobUrls.set(path,url); return url;
+}
+async function getClean(idx){
+  if(cleanCache.has(idx)) return cleanCache.get(idx);
+  const item=book.spine[idx];
+  const doc=parseDoc(await book.zip.text(item.href)||'');
+  const holder=el('div');
+  cleanInto(doc.body||doc.documentElement,holder);
+  const base=dirOf(item.href);
+  for(const img of holder.querySelectorAll('img')){
+    const src=img.dataset.src||''; delete img.dataset.src;
+    if(/^data:/.test(src)){ img.src=src; continue; }
+    const url=await blobFor(resolvePath(base,decodeURIComponent(src.split('#')[0])));
+    if(url) img.src=url; else img.remove();
+  }
+  for(const a of holder.querySelectorAll('a')){
+    const h=a.dataset.href||''; delete a.dataset.href;
+    if(/^(https?|mailto):/i.test(h)){ a.href=h; a.target='_blank'; a.rel='noopener noreferrer'; continue; }
+    if(!h) continue;
+    if(h.startsWith('#')){ a.dataset.jump=idx+'|'+h.slice(1); continue; }
+    const t=book.hrefToSpine(resolvePath(base,decodeURIComponent(h)));
+    if(t.idx>=0) a.dataset.jump=t.idx+'|'+(t.anchor||'');
+  }
+  cleanCache.set(idx,holder);
+  return holder;
+}
+const cfgNow=()=>({perBlock:S.perBlock,minSentences:S.minSentences,wordCap:CAPS[S.capIdx]});
+
+let renderToken=0;
+async function render(idx,anchor,ratio){
+  if(!book) return;
+  const my=++renderToken;
+  idx=Math.max(0,Math.min(book.spine.length-1,idx));
+  chapterIdx=idx;
+  const clean=await getClean(idx);
+  if(my!==renderToken) return;
+  const live=clean.cloneNode(true);
+  live.querySelectorAll('p').forEach(p=>p.classList.add('orig'));
+  applyReflow(live,cfgNow());
+  const c=$('#content'); c.innerHTML='';
+  while(live.firstChild) c.appendChild(live.firstChild);
+  $('#navPrev').disabled=idx===0;
+  $('#navNext').disabled=idx===book.spine.length-1;
+  highlightToc();
+  $('#bar').classList.remove('off');
+  if(anchor){
+    const t=document.getElementById(anchor);
+    if(t){ t.scrollIntoView({block:'start'}); window.scrollBy(0,-80); saveProgress(); return; }
+  }
+  if(typeof ratio==='number'){
+    requestAnimationFrame(()=>{
+      const h=document.documentElement.scrollHeight-window.innerHeight;
+      window.scrollTo(0,Math.max(0,h*ratio)); saveProgress();
+    });
+    return;
+  }
+  window.scrollTo(0,0); saveProgress();
+}
+function reflowInPlace(){
+  if(view!=='reader'||!book) return;
+  const h=document.documentElement.scrollHeight-window.innerHeight;
+  render(chapterIdx,null,h>0?window.scrollY/h:0);
+}
+function buildToc(){
+  const ul=$('#tocList'); ul.innerHTML='';
+  const list=book.toc.length?book.toc:book.spine.map((s,i)=>({label:'Section '+(i+1),idx:i,anchor:null,depth:1}));
+  list.forEach(t=>{
+    const li=el('li'); li.dataset.d=Math.min(3,t.depth||1);
+    const b=el('button'); b.textContent=t.label; b.dataset.idx=t.idx;
+    b.addEventListener('click',()=>{ closeOverlays(); render(t.idx,t.anchor||null); });
+    li.appendChild(b); ul.appendChild(li);
+  });
+  highlightToc();
+}
+function highlightToc(){
+  const btns=[...document.querySelectorAll('#tocList button')];
+  btns.forEach(b=>b.classList.remove('cur'));
+  const hit=btns.find(b=>+b.dataset.idx===chapterIdx);
+  if(hit) hit.classList.add('cur');
+}
+let saveT;
+function saveProgress(){
+  if(!book||!bookId) return;
+  const h=document.documentElement.scrollHeight-window.innerHeight;
+  const within=h>0?Math.min(1,Math.max(0,window.scrollY/h)):0;
+  $('#pbar').style.width=(((chapterIdx+within)/book.spine.length)*100).toFixed(2)+'%';
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>put('progress',{id:bookId,idx:chapterIdx,ratio:within,updated:Date.now()}).catch(()=>{}),400);
+}
+
+/* ============================== overlays ============================== */
+/* The Android back button and our own close buttons both have to end up
+   closing exactly one thing. `pushed` tracks whether an overlay owns a
+   history entry; `ignorePop` stops our own history.back() from being read
+   as a second press. */
+let pushed=false, ignorePop=false;
+const anyOpen=()=>$('#settings').classList.contains('open')||$('#toc').classList.contains('open')||$('#sheet').classList.contains('open');
+function hideOverlays(){
+  $('#settings').classList.remove('open'); $('#toc').classList.remove('open');
+  $('#sheet').classList.remove('open'); $('#scrim').classList.remove('on');
+}
+/* closing because the user tapped the scrim, an × or a menu item */
+function closeOverlays(){
+  if(!anyOpen()) return false;
+  hideOverlays();
+  if(pushed){ pushed=false; ignorePop=true; history.back(); }
+  return true;
+}
+function showOverlay(node){
+  node.classList.add('open'); $('#scrim').classList.add('on');
+  if(!pushed){ history.pushState({v:'overlay'},''); pushed=true; }
+}
+function openDrawer(which){
+  if(closeOverlays()){ setTimeout(()=>openDrawer(which),270); return; }
+  showOverlay($(which));
+}
+window.addEventListener('popstate',()=>{
+  if(ignorePop){ ignorePop=false; return; }
+  if(anyOpen()){ hideOverlays(); pushed=false; return; }
+  if(view==='reader') showShelf();
+});
+
+/* ================================ wiring ================================ */
+$('#add').addEventListener('click',()=>$('#file').click());
+$('#file').addEventListener('change',e=>{ addFiles(e.target.files); e.target.value=''; });
+$('#scrim').addEventListener('click',()=>closeOverlays());
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeOverlays()));
+$('#bBack').addEventListener('click',()=>history.back());
+$('#bToc').addEventListener('click',()=>openDrawer('#toc'));
+$('#bSet').addEventListener('click',()=>openDrawer('#settings'));
+$('#navPrev').addEventListener('click',()=>render(chapterIdx-1));
+$('#navNext').addEventListener('click',()=>render(chapterIdx+1));
+$('#content').addEventListener('click',e=>{
+  const a=e.target.closest('a[data-jump]');
+  if(a){ e.preventDefault(); const [i,an]=a.dataset.jump.split('|'); render(+i,an||null); return; }
+  if(!e.target.closest('a,img')) $('#bar').classList.toggle('off');
+});
+
+let lastY=0;
+window.addEventListener('scroll',()=>{
+  if(view!=='reader') return;
+  saveProgress();
+  const y=window.scrollY, bar=$('#bar');
+  if(y>lastY+14 && y>110) bar.classList.add('off');
+  else if(y<lastY-14) bar.classList.remove('off');
+  lastY=y;
+},{passive:true});
+
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,select,textarea')||e.metaKey||e.ctrlKey||e.altKey) return;
+  if(view!=='reader') return;
+  if(e.key==='ArrowRight'){ e.preventDefault(); render(chapterIdx+1); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); render(chapterIdx-1); }
+  else if(e.key==='s') openDrawer('#settings');
+  else if(e.key==='c') openDrawer('#toc');
+  else if(e.key==='Escape') closeOverlays();
+});
+
+/* ---- settings controls ---- */
+const sws=$('#sws');
+THEMES.forEach(t=>{
+  const b=el('button','sw'); b.style.background=t.bg; b.style.color=t.fg;
+  b.textContent=t.name; b.dataset.name=t.name;
+  b.addEventListener('click',()=>{ S.theme=t.name; S.customBg=''; S.customFg=''; syncControls(); applySettings(); });
+  sws.appendChild(b);
+});
+let reT;
+function bindRange(id,vid,set,fmt,after){
+  const inp=$(id);
+  inp.addEventListener('input',()=>{
+    set(+inp.value); $(vid).textContent=fmt(); applySettings();
+    if(after){ clearTimeout(reT); reT=setTimeout(after,150); }
+  });
+}
+bindRange('#sSize','#vSize',v=>S.size=v,()=>S.size+'px');
+bindRange('#sLh','#vLh',v=>S.lh=v,()=>(S.lh/100).toFixed(2));
+bindRange('#sLs','#vLs',v=>S.ls=v,()=>(S.ls/100).toFixed(2)+'em');
+bindRange('#sWs','#vWs',v=>S.ws=v,()=>(S.ws/100).toFixed(2)+'em');
+bindRange('#sMeas','#vMeas',v=>S.measure=v,()=>S.measure+'rem');
+bindRange('#sGap','#vGap',v=>S.gap=v,()=>(S.gap/100).toFixed(2)+'em');
+bindRange('#sCon','#vCon',v=>S.contrast=v,()=>S.contrast+'%');
+bindRange('#sSent','#vSent',v=>S.perBlock=v,()=>String(S.perBlock),reflowInPlace);
+bindRange('#sMin','#vMin',v=>S.minSentences=v,()=>S.minSentences+' sent.',reflowInPlace);
+bindRange('#sCap','#vCap',v=>S.capIdx=v,()=>CAPS[S.capIdx]?CAPS[S.capIdx]+' words':'off',reflowInPlace);
+$('#fFam').addEventListener('change',e=>{ S.font=e.target.value; applySettings(); });
+$('#cBg').addEventListener('input',e=>{ S.customBg=e.target.value; applySettings(); });
+$('#cFg').addEventListener('input',e=>{ S.customFg=e.target.value; applySettings(); });
+$('#cOrig').addEventListener('change',e=>{ S.origGap=e.target.checked; applySettings(); });
+$('#cIndent').addEventListener('change',e=>{ S.indent=e.target.checked; applySettings(); });
+document.querySelectorAll('#segAlign button').forEach(b=>b.addEventListener('click',()=>{ S.align=b.dataset.v; syncControls(); applySettings(); }));
+$('#reset').addEventListener('click',()=>{ S=Object.assign({},DEFAULTS); syncControls(); applySettings(); reflowInPlace(); toast('Back to defaults'); });
+
+function syncControls(){
+  $('#sSize').value=S.size;  $('#vSize').textContent=S.size+'px';
+  $('#sLh').value=S.lh;      $('#vLh').textContent=(S.lh/100).toFixed(2);
+  $('#sLs').value=S.ls;      $('#vLs').textContent=(S.ls/100).toFixed(2)+'em';
+  $('#sWs').value=S.ws;      $('#vWs').textContent=(S.ws/100).toFixed(2)+'em';
+  $('#sMeas').value=S.measure; $('#vMeas').textContent=S.measure+'rem';
+  $('#sGap').value=S.gap;    $('#vGap').textContent=(S.gap/100).toFixed(2)+'em';
+  $('#sCon').value=S.contrast; $('#vCon').textContent=S.contrast+'%';
+  $('#sSent').value=S.perBlock; $('#vSent').textContent=String(S.perBlock);
+  $('#sMin').value=S.minSentences; $('#vMin').textContent=S.minSentences+' sent.';
+  $('#sCap').value=S.capIdx; $('#vCap').textContent=CAPS[S.capIdx]?CAPS[S.capIdx]+' words':'off';
+  $('#fFam').value=S.font;
+  $('#cOrig').checked=!!S.origGap; $('#cIndent').checked=!!S.indent;
+  const th=THEMES.find(t=>t.name===S.theme)||THEMES[0];
+  $('#cBg').value=S.customBg||th.bg; $('#cFg').value=S.customFg||th.fg;
+  document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('sel',!S.customBg&&!S.customFg&&b.dataset.name===S.theme));
+  document.querySelectorAll('#segAlign button').forEach(b=>b.classList.toggle('sel',b.dataset.v===S.align));
+}
+async function updateStorageInfo(){
+  try{
+    const e=await navigator.storage.estimate();
+    const mb=n=>(n/1048576).toFixed(n>104857600?0:1)+' MB';
+    const persisted=navigator.storage.persisted?await navigator.storage.persisted():false;
+    $('#storageInfo').textContent='Your books use '+mb(e.usage||0)+' of '+mb(e.quota||0)+' available on this phone'+
+      (persisted?', and are protected from automatic clean-up.':'.');
+  }catch(err){ $('#storageInfo').textContent='Books are stored on this phone.'; }
+}
+
+/* ============================ share target ============================ */
+async function consumeSharedFile(){
+  try{
+    const c=await caches.open('reflow-share');
+    const res=await c.match('shared-book');
+    if(!res) return false;
+    const name=res.headers.get('x-filename')||'shared.epub';
+    const blob=await res.blob();
+    await c.delete('shared-book');
+    const f=new File([blob],name,{type:'application/epub+zip'});
+    await addFiles([f]);
+    return true;
+  }catch(e){ return false; }
+}
+
+/* =============================== startup =============================== */
+(async function init(){
+  syncControls(); applySettings();
+  history.replaceState({v:'shelf'},'');
+  if(typeof DecompressionStream==='undefined'){
+    showSheet('Browser too old','This phone’s browser cannot decompress EPUB files. Chrome 103 or newer is needed.',[{label:'OK'}]);
+  }
+  try{ await renderShelf(); }catch(e){ console.error(e); toast('Could not open storage'); }
+  updateStorageInfo();
+  const url=new URL(location.href);
+  if(url.searchParams.get('shared')){
+    history.replaceState({v:'shelf'},'',url.pathname);
+    await consumeSharedFile();
+  }
+  if('serviceWorker' in navigator){
+    try{ await navigator.serviceWorker.register('./sw.js'); }catch(e){ console.warn('SW failed',e); }
+  }
+})();
+</script>
+</body>
+</html>
