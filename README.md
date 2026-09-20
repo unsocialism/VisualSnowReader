@@ -65,6 +65,16 @@ Tap **Aa**.
 
 Settings apply to every book; your place is remembered per book.
 
+## Sharing it
+
+The page is public — anyone with the address can open it and use the reader, and it is
+free to install on their own phone the same way.
+
+Each person gets their own private shelf. Books, reading position and settings live in
+that person's own browser storage on their own device and are never uploaded: the app has
+no server, no accounts and no analytics, and makes no network requests beyond loading its
+own files. So sharing the link shares the reader, never anyone's library.
+
 ## Things worth knowing
 
 - **DRM'd books won't open.** Files from Kindle (`.azw`, `.kfx`) or with Adobe DRM can
