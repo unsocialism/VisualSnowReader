@@ -1,3 +1,4 @@
+
 # Visual Snow Reader — installable EPUB and PDF reader
 
 An EPUB and PDF reader that breaks walls of text into short blocks, in case you have difficulties with walls of text(for example with visual snow), with low-contrast tinted
@@ -17,7 +18,7 @@ Once installed it works with the phone in aeroplane mode.
 | `icon-*.png` | App icons, including a maskable one for Android's adaptive icon shapes. |
 
 ## Putting it on your phone
-
+<img width="340" height="340" alt="qr code" src="https://github.com/user-attachments/assets/0cfb73a6-e52c-492e-b9e3-bd55097e89bd" />
 
 1. Open that URL in **Chrome**.
 2. Menu (⋮) → **Add to Home screen** — or **Install app**, if Chrome offers it.
@@ -25,8 +26,7 @@ Once installed it works with the phone in aeroplane mode.
 4. Tap **Add a book** and pick an `.epub` or `.pdf`. You can also share one to Visual Snow Reader
    from Files, Drive or your browser's downloads — the app appears in the share sheet.
 
-After the first visit the app is cached, so it opens and reads with no connection.
-Updating later means re-uploading the files and reopening the app once online.
+After the first visit the app is cached, so it opens and reads with no connection. (step 2 and 3 are only necessary if you want 
 
 ## Reading settings
 
@@ -107,16 +107,35 @@ is mostly diagrams or tables, a normal PDF viewer is the better tool for that on
 
 ## FAQ
 
+**Does it save the current progress of a book?**
+
+yes, progress is saved, but entirely on the device you are reading it.
+if you are on chapter 4 on your phone and open it on the pc, your pc will either start at the beginning or wherever you left of last time on your pc.
+
+**Where is everything stored?**
+
+Everything is saved inside the browser on each device. None of it goes to GitHub or anywhere else.
+What gets stored where:
+    The books themselves: the full EPUB or PDF file, plus its cover, title and author. For PDFs, the extracted text is kept too, which is why they open instantly after the first import.        These live in the browser's built-in database (IndexedDB) under the name reflow(original name of this reader but i was too lazy to change it here).
+    Your reading progress: for each book, which chapter you're in and how far down it. It's in the same database, saved about half a second after you stop scrolling.
+    Your settings: block size, colours, highlighting, spacing and so on. These are in the browser's local storage, and they apply to every book.
+    The app itself: a copy of the app's own files, so it works offline. It contains no books.
+
+Where that physically ends up on the device:
+    Phone (Chrome or Brave on Android): inside the browser's private app data, which you can't browse to in a file manager. Android only clears it if you clear the browser's data for the        site or uninstall the app. The app also asks Android to protect it from automatic clean-up.
+    PC: inside the browser's profile folder on your disk, separately for each browser and each browser profile.
+
+
 **can i use a different browser than chrome?**
 
 Yes. It's an ordinary web page, so any modern browser can open it at unsocialism.github.io/visualsnowreader/. How well it installs depends on the browser:
 
 **On Android:**
-Chrome, Edge, Samsung Internet, Brave: full install. It gets its own app icon and a place in the app switcher, runs fullscreen, works offline, and should show up in the share sheet. These all run on the same engine as Chrome, which is the one I tested in.
-Firefox: works, including offline, but "installing" only adds a home-screen shortcut rather than a real app (MDN). That means it won't appear in the share sheet, so you add books with Add a book instead. It needs Firefox 113 or newer.
+    Chrome, Edge, Samsung Internet, Brave: full install. It gets its own app icon and a place in the app switcher, runs fullscreen, works offline, and should show up in the share sheet.     These all run on the same engine as Chrome, which is the one I tested in.
+    Firefox: works, including offline, but "installing" only adds a home-screen shortcut rather than a real app (MDN). That means it won't appear in the share sheet, so you add books with     Add a book instead. It needs Firefox 113 or newer.
 
 **On a computer:**
-Chrome and Edge can install it as a desktop app; in Firefox you just use it in a tab. On an iPhone, Safari → Share → Add to Home Screen works, but the share sheet doesn't.
+    Chrome and Edge can install it as a desktop app; in Firefox you just use it in a tab. On an iPhone, Safari → Share → Add to Home Screen works, but the share sheet doesn't.
 
 Each browser keeps its own separate library. Books, reading positions and settings are stored inside the browser you used, so if you open the reader in Firefox after using it in Chrome, the shelf is empty. The same goes for a second phone or your computer. Nothing syncs between them, so pick one browser per device for the books you're actually reading.
 
