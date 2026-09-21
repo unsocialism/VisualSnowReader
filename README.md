@@ -1,10 +1,10 @@
 # Visual Snow Reader — installable EPUB reader
 
-An EPUB reader that breaks walls of text into short blocks, with low-contrast tinted
+An EPUB reader that breaks walls of text into short blocks, in case you have issues witch walls of texts, with low-contrast tinted
 themes. Everything runs in the browser: no server, no accounts, no tracking, and your
-books never leave your phone.
+books never leave your phone or pc.
 
-Once installed it works with the phone in aeroplane mode.
+Once "installed" it works with the phone in aeroplane mode.
 
 ## What's in here
 
@@ -19,26 +19,6 @@ All paths are relative, so it works at a domain root **or** in a subfolder
 (`https://you.github.io/reflow/`) with no changes.
 
 ## Putting it on your phone
-
-Android will only install a web app served over **https**, so the folder has to live
-somewhere on the web first. Any static host works. Two easy free ones:
-
-### GitHub Pages (no command line needed)
-
-1. Create a free account at github.com, then **New repository** → name it `reflow` →
-   **Public** → Create.
-2. On the empty repo page, click **uploading an existing file**, then drag in all the
-   files from this folder (the files themselves, not the folder). Click **Commit changes**.
-3. Go to **Settings → Pages**. Under *Branch* pick `main` and `/ (root)`. Save.
-4. Wait about a minute, then reload that page — it shows your URL, something like
-   `https://yourname.github.io/reflow/`.
-
-### Cloudflare Pages
-
-1. Sign in at pages.cloudflare.com → **Create a project** → **Direct Upload**.
-2. Drag this folder in. It gives you a `https://….pages.dev` URL straight away.
-
-### Then, on the phone
 
 1. Open that URL in **Chrome**.
 2. Menu (⋮) → **Add to Home screen** — or **Install app**, if Chrome offers it.
