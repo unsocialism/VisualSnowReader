@@ -70,3 +70,20 @@ own files. So sharing the link shares the reader, never anyone's library.
 ## Keyboard (if you ever use it on a desktop)
 
 `←` `→` chapters · `s` settings · `c` contents · `Esc` close
+
+
+## FAQ
+**can i use/install the reader also in different browser?**
+
+Yes. It's an ordinary web page, so any modern browser can open it at unsocialism.github.io/visualsnowreader/. How well it installs depends on the browser:
+
+**On Android**:
+Chrome, Edge, Samsung Internet, Brave: full install. It gets its own app icon and a place in the app switcher, runs fullscreen, works offline, and should show up in the share sheet. These all run on the same engine as Chrome, which is the one I tested in.
+Firefox: works, including offline, but "installing" only adds a home-screen shortcut rather than a real app (MDN). That means it won't appear in the share sheet, so you add books with Add a book instead. It needs Firefox 113 or newer.
+
+**On a computer**: 
+Chrome and Edge can install it as a desktop app; in Firefox you just use it in a tab. On an iPhone, Safari → Share → Add to Home Screen works, but the share sheet doesn't.
+
+Each browser keeps its own separate library. Books, reading positions and settings are stored inside the browser you used, so if you open the reader in Firefox after using it in Chrome, the shelf is empty. The same goes for a second phone or your computer. Nothing syncs between them, so pick one browser per device for the books you're actually reading.
+
+One caveat: all my testing ran in Chromium, the engine behind Chrome. The code only uses standard features that Firefox and Safari also support, but I haven't run the app in them. If something looks off in another browser, tell me which one.
