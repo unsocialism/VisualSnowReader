@@ -1,6 +1,6 @@
 # Visual Snow Reader — installable EPUB reader
 
-An EPUB reader that breaks walls of text into short blocks, in case you have issues witch walls of texts, with low-contrast tinted
+An EPUB reader that breaks walls of text into short blocks, in case you have issues with walls of texts, with low-contrast tinted
 themes. Everything runs in the browser: no server, no accounts, no tracking, and your
 books never leave your phone or pc.
 
