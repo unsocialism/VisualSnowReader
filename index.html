@@ -112,6 +112,7 @@
   #content a{color:inherit; text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--fg) 35%,transparent); text-underline-offset:2px}
   #content table{border-collapse:collapse; margin:1.5em 0; font-size:.9em; display:block; overflow-x:auto}
   #content td,#content th{border:1px solid color-mix(in srgb,var(--fg) 22%,transparent); padding:.4em .55em}
+  html.hl #content p:not(:has(img)){background:var(--hlbg); padding:.5em .75em; border-radius:.55em}
   #content p.verse{text-align:center; text-indent:0; margin-top:var(--origgap); margin-bottom:var(--origgap)}
   #content figcaption{font-size:.85em; color:var(--muted); text-align:center; margin:-1em 0 1.8em}
   #chapnav{max-width:var(--measure); margin:3rem auto 0; display:flex; gap:.7rem;
@@ -152,6 +153,8 @@
   .cr{display:flex; gap:.6rem; align-items:center; margin-bottom:.9rem}
   .cr input[type=color]{width:2.6rem; height:2.1rem; padding:0; border:1px solid color-mix(in srgb,var(--fg) 22%,transparent); border-radius:7px; background:none; flex:none}
   .seg{display:flex; gap:.35rem}
+  .seg-auto{padding:.45rem .6rem; border-radius:8px; font-size:.78rem; color:var(--muted); border:1px solid color-mix(in srgb,var(--fg) 18%,transparent)}
+  .seg-auto.sel{background:color-mix(in srgb,var(--fg) 82%,var(--bg)); color:var(--bg); border-color:transparent}
   .seg button{flex:1; padding:.6rem .3rem; border-radius:9px; font-size:.85rem; color:var(--muted);
     border:1px solid color-mix(in srgb,var(--fg) 18%,transparent)}
   .seg button.sel{background:color-mix(in srgb,var(--fg) 82%,var(--bg)); color:var(--bg); border-color:transparent}
@@ -243,6 +246,10 @@
     <p class="hint">Lower contrast usually calms the static. Pure black on pure white is the worst case.</p>
     <div class="cr"><input type="color" id="cBg"><label for="cBg" style="flex:1">Custom background</label></div>
     <div class="cr"><input type="color" id="cFg"><label for="cFg" style="flex:1">Custom text</label></div>
+    <label class="ck" style="margin-top:.4rem"><input type="checkbox" id="cHl"><span>Highlight text blocks</span></label>
+    <div class="rg"><div class="h"><span>Highlight strength</span><span id="vHl">35%</span></div><input type="range" id="sHl" min="5" max="100" step="1"></div>
+    <div class="cr"><input type="color" id="cHlc"><label for="cHlc" style="flex:1">Custom highlight</label><button class="seg-auto" id="hlAuto" type="button">Match theme</button></div>
+    <p class="hint">Each block gets its own tinted background, so the page colour separates the blocks. By default the tint follows the theme.</p>
   </fieldset>
 
   <fieldset><legend>Type</legend>
@@ -672,7 +679,8 @@ function cleanInto(src,dst){
 const DEFAULTS={ theme:'Sepia', contrast:80, customBg:'', customFg:'',
   font:'Georgia,"Iowan Old Style","Palatino Linotype",serif',
   size:20, lh:175, ls:1, ws:2, measure:38, gap:85, align:'left',
-  perBlock:2, minSentences:3, capIdx:4, origGap:true, indent:false };
+  perBlock:2, minSentences:3, capIdx:4, origGap:true, indent:false,
+  hl:false, hlStrength:35, hlColor:'' };
 const CAPS=[0,20,25,30,35,45,55,70,90];
 const THEMES=[
   {name:'Sepia',bg:'#f3e9d8',fg:'#4a4036'},{name:'Linen',bg:'#ece7dd',fg:'#474441'},
@@ -697,6 +705,10 @@ function applySettings(){
   r.setProperty('--bg',bg); r.setProperty('--fg',fg);
   r.setProperty('--muted',mix(fg,bg,0.42));
   r.setProperty('--panel',mix(bg,fg,0.06));
+  // theme tint: nudge the page colour toward the text colour (darker on light themes, lighter on dark);
+  // custom colour: blend it into the page colour by the same strength
+  r.setProperty('--hlbg', S.hlColor ? mix(bg,S.hlColor,S.hlStrength/100) : mix(bg,fgFull,S.hlStrength/100*0.3));
+  document.documentElement.classList.toggle('hl', !!S.hl);
   r.setProperty('--font',S.font);
   r.setProperty('--size',S.size+'px');
   r.setProperty('--lh',(S.lh/100).toFixed(2));
@@ -1092,12 +1104,16 @@ bindRange('#sWs','#vWs',v=>S.ws=v,()=>(S.ws/100).toFixed(2)+'em');
 bindRange('#sMeas','#vMeas',v=>S.measure=v,()=>S.measure+'rem');
 bindRange('#sGap','#vGap',v=>S.gap=v,()=>(S.gap/100).toFixed(2)+'em');
 bindRange('#sCon','#vCon',v=>S.contrast=v,()=>S.contrast+'%');
+bindRange('#sHl','#vHl',v=>{S.hlStrength=v; if(!S.hl){S.hl=true; $('#cHl').checked=true;}},()=>S.hlStrength+'%');
 bindRange('#sSent','#vSent',v=>S.perBlock=v,()=>String(S.perBlock),reflowInPlace);
 bindRange('#sMin','#vMin',v=>S.minSentences=v,()=>S.minSentences+' sent.',reflowInPlace);
 bindRange('#sCap','#vCap',v=>S.capIdx=v,()=>CAPS[S.capIdx]?CAPS[S.capIdx]+' words':'off',reflowInPlace);
 $('#fFam').addEventListener('change',e=>{ S.font=e.target.value; applySettings(); });
 $('#cBg').addEventListener('input',e=>{ S.customBg=e.target.value; applySettings(); });
 $('#cFg').addEventListener('input',e=>{ S.customFg=e.target.value; applySettings(); });
+$('#cHl').addEventListener('change',e=>{ S.hl=e.target.checked; applySettings(); });
+$('#cHlc').addEventListener('input',e=>{ S.hlColor=e.target.value; S.hl=true; syncControls(); applySettings(); });
+$('#hlAuto').addEventListener('click',()=>{ S.hlColor=''; syncControls(); applySettings(); });
 $('#cOrig').addEventListener('change',e=>{ S.origGap=e.target.checked; applySettings(); });
 $('#cIndent').addEventListener('change',e=>{ S.indent=e.target.checked; applySettings(); });
 document.querySelectorAll('#segAlign button').forEach(b=>b.addEventListener('click',()=>{ S.align=b.dataset.v; syncControls(); applySettings(); }));
@@ -1118,6 +1134,9 @@ function syncControls(){
   $('#cOrig').checked=!!S.origGap; $('#cIndent').checked=!!S.indent;
   const th=THEMES.find(t=>t.name===S.theme)||THEMES[0];
   $('#cBg').value=S.customBg||th.bg; $('#cFg').value=S.customFg||th.fg;
+  $('#cHl').checked=!!S.hl; $('#sHl').value=S.hlStrength; $('#vHl').textContent=S.hlStrength+'%';
+  $('#cHlc').value=S.hlColor||mix(S.customBg||th.bg,S.customFg||th.fg,0.3);
+  $('#hlAuto').classList.toggle('sel',!S.hlColor);
   document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('sel',!S.customBg&&!S.customFg&&b.dataset.name===S.theme));
   document.querySelectorAll('#segAlign button').forEach(b=>b.classList.toggle('sel',b.dataset.v===S.align));
 }
