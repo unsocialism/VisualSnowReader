@@ -18,6 +18,7 @@ Once installed it works with the phone in aeroplane mode.
 | `icon-*.png` | App icons, including a maskable one for Android's adaptive icon shapes. |
 
 ## Putting it on your phone
+<img width="300" height="300" alt="qr code vsr" src="https://github.com/user-attachments/assets/70a8574f-8480-4cbe-96d9-3d35213a42e8" />
 
 
 1. Open that URL in **Chrome**.
