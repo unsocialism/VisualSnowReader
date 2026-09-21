@@ -18,7 +18,7 @@ Once installed it works with the phone in aeroplane mode.
 | `icon-*.png` | App icons, including a maskable one for Android's adaptive icon shapes. |
 
 ## Putting it on your phone
-<img width="340" height="340" alt="qr code" src="https://github.com/user-attachments/assets/0cfb73a6-e52c-492e-b9e3-bd55097e89bd" />
+
 
 1. Open that URL in **Chrome**.
 2. Menu (⋮) → **Add to Home screen** — or **Install app**, if Chrome offers it.
