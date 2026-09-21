@@ -39,6 +39,9 @@ Tap **Aa**.
   and semicolons so it can't become a wall on its own. Default 35 words.
 - **Colour** — twelve tinted themes plus custom colours, and a contrast slider that
   softens text against the background. No pure white or pure black anywhere.
+- **Highlight text blocks** — gives each block its own tinted background, with the page colour
+  showing between blocks. The tint follows the theme; a slider sets how strong it is, and you
+  can pick your own colour instead.
 - **Type** — typeface, size, line spacing, letter and word spacing, column width,
   gap between blocks, ragged or justified.
 
