@@ -1,6 +1,6 @@
 # Visual Snow Reader — installable EPUB and PDF reader
 
-An EPUB and PDF reader that breaks walls of text into short blocks, with low-contrast tinted
+An EPUB and PDF reader that breaks walls of text into short blocks, in case you have difficulties with walls of text(for example with visual snow), with low-contrast tinted
 themes. Everything runs in the browser: no server, no accounts, no tracking, and your
 books never leave your phone.
 
@@ -16,30 +16,8 @@ Once installed it works with the phone in aeroplane mode.
 | `pdf-extract.js` | Reads the text out of PDFs and rebuilds the paragraphs. Loaded only when you add a PDF. |
 | `icon-*.png` | App icons, including a maskable one for Android's adaptive icon shapes. |
 
-All paths are relative, so it works at a domain root **or** in a subfolder
-(`https://you.github.io/reflow/`) with no changes.
-
 ## Putting it on your phone
 
-Android will only install a web app served over **https**, so the folder has to live
-somewhere on the web first. Any static host works. Two easy free ones:
-
-### GitHub Pages (no command line needed)
-
-1. Create a free account at github.com, then **New repository** → name it `reflow` →
-   **Public** → Create.
-2. On the empty repo page, click **uploading an existing file**, then drag in all the
-   files from this folder (the files themselves, not the folder). Click **Commit changes**.
-3. Go to **Settings → Pages**. Under *Branch* pick `main` and `/ (root)`. Save.
-4. Wait about a minute, then reload that page — it shows your URL, something like
-   `https://yourname.github.io/reflow/`.
-
-### Cloudflare Pages
-
-1. Sign in at pages.cloudflare.com → **Create a project** → **Direct Upload**.
-2. Drag this folder in. It gives you a `https://….pages.dev` URL straight away.
-
-### Then, on the phone
 
 1. Open that URL in **Chrome**.
 2. Menu (⋮) → **Add to Home screen** — or **Install app**, if Chrome offers it.
@@ -122,3 +100,21 @@ is mostly diagrams or tables, a normal PDF viewer is the better tool for that on
 ## Keyboard (if you ever use it on a desktop)
 
 `←` `→` chapters · `s` settings · `c` contents · `Esc` close
+
+
+## FAQ
+
+**can i use a different browser than chrome?**
+
+Yes. It's an ordinary web page, so any modern browser can open it at unsocialism.github.io/visualsnowreader/. How well it installs depends on the browser:
+
+**On Android:**
+Chrome, Edge, Samsung Internet, Brave: full install. It gets its own app icon and a place in the app switcher, runs fullscreen, works offline, and should show up in the share sheet. These all run on the same engine as Chrome, which is the one I tested in.
+Firefox: works, including offline, but "installing" only adds a home-screen shortcut rather than a real app (MDN). That means it won't appear in the share sheet, so you add books with Add a book instead. It needs Firefox 113 or newer.
+
+**On a computer:**
+Chrome and Edge can install it as a desktop app; in Firefox you just use it in a tab. On an iPhone, Safari → Share → Add to Home Screen works, but the share sheet doesn't.
+
+Each browser keeps its own separate library. Books, reading positions and settings are stored inside the browser you used, so if you open the reader in Firefox after using it in Chrome, the shelf is empty. The same goes for a second phone or your computer. Nothing syncs between them, so pick one browser per device for the books you're actually reading.
+
+One caveat: all my testing ran in Chromium, the engine behind Chrome. The code only uses standard features that Firefox and Safari also support, but I haven't run the app in them. If something looks off in another browser, tell me which one.
