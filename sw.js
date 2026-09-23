@@ -1,14 +1,13 @@
 /* Visual Snow Reader service worker — makes the app work with no network at all,
    and receives .epub files shared from other Android apps. */
-const VERSION = 'vsr-v3';
+const VERSION = 'vsr-v2';
 const SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',
-  './icon-maskable-512.png',
-  './pdf-extract.js'
+  './icon-maskable-512.png'
 ];
 
 self.addEventListener('install', e => {
@@ -42,10 +41,6 @@ async function refreshShell(req) {
     const old = await c.match('./index.html');
     const oldText = old ? await old.text() : '';
     await c.put('./index.html', forCache);
-    // keep every other app file current too (revalidation is cheap: unchanged files come back 304)
-    await Promise.all(SHELL.filter(u => u !== './' && u !== './index.html').map(async u => {
-      try { const r = await fetch(u, { cache: 'no-cache' }); if (r && r.ok) await c.put(u, r); } catch (err) {}
-    }));
     if (oldText && oldText !== newText) {
       // A flag outlives the race between this background fetch and the page's
       // scripts starting up; the page clears it once it has said something.
@@ -70,7 +65,7 @@ self.addEventListener('fetch', e => {
         if (file) {
           const c = await caches.open('reflow-share');
           await c.put('shared-book', new Response(file, {
-            headers: { 'x-filename': file.name || 'shared', 'x-type': file.type || '' }
+            headers: { 'x-filename': file.name || 'shared.epub' }
           }));
         }
       } catch (err) { /* fall through to the app either way */ }
@@ -84,7 +79,7 @@ self.addEventListener('fetch', e => {
   // ---- navigations: serve the shell instantly, refresh it in the background ----
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
-      const cached = await (await caches.open(VERSION)).match('./index.html') || await caches.match('./index.html');
+      const cached = await caches.match('./index.html');
       if (cached) {
         e.waitUntil(refreshShell(req));
         return cached;

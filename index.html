@@ -112,8 +112,6 @@
   #content a{color:inherit; text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--fg) 35%,transparent); text-underline-offset:2px}
   #content table{border-collapse:collapse; margin:1.5em 0; font-size:.9em; display:block; overflow-x:auto}
   #content td,#content th{border:1px solid color-mix(in srgb,var(--fg) 22%,transparent); padding:.4em .55em}
-  html.hl #content p:not(:has(img)){background:var(--hlbg); padding:.5em .75em; border-radius:.55em}
-  #content p.verse{text-align:center; text-indent:0; margin-top:var(--origgap); margin-bottom:var(--origgap)}
   #content figcaption{font-size:.85em; color:var(--muted); text-align:center; margin:-1em 0 1.8em}
   #chapnav{max-width:var(--measure); margin:3rem auto 0; display:flex; gap:.7rem;
     border-top:1px solid color-mix(in srgb,var(--fg) 13%,transparent); padding-top:1.4rem; font-size:.92rem}
@@ -153,8 +151,6 @@
   .cr{display:flex; gap:.6rem; align-items:center; margin-bottom:.9rem}
   .cr input[type=color]{width:2.6rem; height:2.1rem; padding:0; border:1px solid color-mix(in srgb,var(--fg) 22%,transparent); border-radius:7px; background:none; flex:none}
   .seg{display:flex; gap:.35rem}
-  .seg-auto{padding:.45rem .6rem; border-radius:8px; font-size:.78rem; color:var(--muted); border:1px solid color-mix(in srgb,var(--fg) 18%,transparent)}
-  .seg-auto.sel{background:color-mix(in srgb,var(--fg) 82%,var(--bg)); color:var(--bg); border-color:transparent}
   .seg button{flex:1; padding:.6rem .3rem; border-radius:9px; font-size:.85rem; color:var(--muted);
     border:1px solid color-mix(in srgb,var(--fg) 18%,transparent)}
   .seg button.sel{background:color-mix(in srgb,var(--fg) 82%,var(--bg)); color:var(--bg); border-color:transparent}
@@ -197,12 +193,12 @@
   <div id="shelfHead"><h1>Visual Snow Reader</h1><span id="count"></span></div>
   <div id="empty" class="hide">
     <b>Your shelf is empty</b>
-    Add an EPUB or a PDF and it stays here — with your place saved — so you never have to go looking for the file again.
+    Add an EPUB and it stays here — with your place saved — so you never have to go looking for the file again.
   </div>
   <div id="grid"></div>
 </main>
 <div id="addWrap" class="ui"><button id="add">Add a book</button></div>
-<input type="file" id="file" accept=".epub,application/epub+zip,.pdf,application/pdf" multiple hidden>
+<input type="file" id="file" accept=".epub,application/epub+zip" multiple hidden>
 
 <!-- ============ reader ============ -->
 <div id="pbar" class="hide"></div>
@@ -246,10 +242,6 @@
     <p class="hint">Lower contrast usually calms the static. Pure black on pure white is the worst case.</p>
     <div class="cr"><input type="color" id="cBg"><label for="cBg" style="flex:1">Custom background</label></div>
     <div class="cr"><input type="color" id="cFg"><label for="cFg" style="flex:1">Custom text</label></div>
-    <label class="ck" style="margin-top:.4rem"><input type="checkbox" id="cHl"><span>Highlight text blocks</span></label>
-    <div class="rg"><div class="h"><span>Highlight strength</span><span id="vHl">35%</span></div><input type="range" id="sHl" min="5" max="100" step="1"></div>
-    <div class="cr"><input type="color" id="cHlc"><label for="cHlc" style="flex:1">Custom highlight</label><button class="seg-auto" id="hlAuto" type="button">Match theme</button></div>
-    <p class="hint">Each block gets its own tinted background, so the page colour separates the blocks. By default the tint follows the theme.</p>
   </fieldset>
 
   <fieldset><legend>Type</legend>
@@ -286,7 +278,7 @@
 </div>
 
 <div id="toast" class="ui"></div>
-<div id="busy" class="ui hide"><span id="busyText">Opening…</span></div>
+<div id="busy" class="ui hide">Opening…</div>
 
 <script>
 "use strict";
@@ -298,7 +290,7 @@ const $ = s => document.querySelector(s);
 const el = (t,c) => { const n = document.createElement(t); if(c) n.className = c; return n; };
 let toastT;
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),2000); }
-const busy = (on, text) => { $('#busy').classList.toggle('hide', !on); if (on) $('#busyText').textContent = text || 'Opening\u2026'; };
+const busy = on => $('#busy').classList.toggle('hide', !on);
 
 const store = {
   get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:JSON.parse(v);}catch(e){return d;} },
@@ -626,7 +618,7 @@ function reflowParagraph(p,cfg){
 }
 function applyReflow(container,cfg){
   for(const p of [...container.querySelectorAll('p')]){
-    if(p.querySelector('img') || p.classList.contains('verse')) continue;
+    if(p.querySelector('img')) continue;
     const parts=reflowParagraph(p,cfg);
     if(!parts) continue;
     const f=document.createDocumentFragment();
@@ -679,8 +671,7 @@ function cleanInto(src,dst){
 const DEFAULTS={ theme:'Sepia', contrast:80, customBg:'', customFg:'',
   font:'Georgia,"Iowan Old Style","Palatino Linotype",serif',
   size:20, lh:175, ls:1, ws:2, measure:38, gap:85, align:'left',
-  perBlock:2, minSentences:3, capIdx:4, origGap:true, indent:false,
-  hl:false, hlStrength:35, hlColor:'' };
+  perBlock:2, minSentences:3, capIdx:4, origGap:true, indent:false };
 const CAPS=[0,20,25,30,35,45,55,70,90];
 const THEMES=[
   {name:'Sepia',bg:'#f3e9d8',fg:'#4a4036'},{name:'Linen',bg:'#ece7dd',fg:'#474441'},
@@ -705,10 +696,6 @@ function applySettings(){
   r.setProperty('--bg',bg); r.setProperty('--fg',fg);
   r.setProperty('--muted',mix(fg,bg,0.42));
   r.setProperty('--panel',mix(bg,fg,0.06));
-  // theme tint: nudge the page colour toward the text colour (darker on light themes, lighter on dark);
-  // custom colour: blend it into the page colour by the same strength
-  r.setProperty('--hlbg', S.hlColor ? mix(bg,S.hlColor,S.hlStrength/100) : mix(bg,fgFull,S.hlStrength/100*0.3));
-  document.documentElement.classList.toggle('hl', !!S.hl);
   r.setProperty('--font',S.font);
   r.setProperty('--size',S.size+'px');
   r.setProperty('--lh',(S.lh/100).toFixed(2));
@@ -760,7 +747,7 @@ async function renderShelf(){
     more.addEventListener('click',e=>{ e.stopPropagation(); bookMenu(b); });
     const meta=el('div','meta');
     const t=el('div','t'); t.textContent=b.title;
-    const a=el('div','a'); a.textContent=[b.author, b.format==='pdf'?'PDF':''].filter(Boolean).join(' \u00b7 ');
+    const a=el('div','a'); a.textContent=b.author||'';
     meta.append(t,a);
     card.append(cov,more,meta);
     g.appendChild(card);
@@ -802,39 +789,17 @@ async function hashOf(buffer){
     return [...new Uint8Array(h).slice(0,16)].map(b=>b.toString(16).padStart(2,'0')).join('');
   }catch(e){ return 'b'+buffer.byteLength+'-'+Date.now().toString(36); }
 }
-/* PDFs are read by pdf-extract.js, loaded only when first needed (and cached for offline use) */
-let pdfMod=null;
-async function pdfLib(){ if(!pdfMod) pdfMod=await import('./pdf-extract.js'); return pdfMod; }
-const PDF_VER=1;
-function isPdf(buf){
-  const b=new Uint8Array(buf,0,Math.min(1024,buf.byteLength)); let s='';
-  for(const x of b) s+=String.fromCharCode(x);
-  return s.includes('%PDF-');
-}
 async function addFiles(list){
   const files=[...list].filter(Boolean);
   if(!files.length) return;
   busy(true);
-  let added=0, dupes=0, failed=[], epubFailed=false;
+  let added=0, dupes=0, failed=[];
   for(const f of files){
     try{
       const buf=await f.arrayBuffer();
       const id=await hashOf(buf);
       if(await get('books',id)){ dupes++; continue; }
-      if(isPdf(buf)){
-        const {extractPdf}=await pdfLib();
-        busy(true,'Reading PDF\u2026');
-        const r=await extractPdf(buf,{fileName:f.name||'',onProgress:(i,n)=>{
-          if(i%4===0||i===n) $('#busyText').textContent='Reading PDF \u2014 page '+i+' of '+n;
-        }});
-        const cover=r.cover?new Blob([r.cover],{type:'image/jpeg'}):null;
-        await put('files',{id,blob:new Blob([buf],{type:'application/pdf'}),pdf:{sections:r.sections,pageCount:r.pageCount},pdfVer:PDF_VER});
-        await put('books',{id,title:r.title,author:r.author,added:Date.now(),opened:Date.now(),
-                           size:f.size,spineCount:r.sections.length,cover,format:'pdf'});
-        added++; busy(true); continue;
-      }
-      let ep;
-      try{ ep=await loadEpub(buf); }catch(e){ epubFailed=true; throw e; }
+      const ep=await loadEpub(buf);
       let cover=null;
       if(ep.coverHref && ep.zip.has(ep.coverHref)){
         const cb=await ep.zip.bytes(ep.coverHref);
@@ -844,14 +809,14 @@ async function addFiles(list){
       await put('books',{id,title:ep.title,author:ep.author,added:Date.now(),opened:Date.now(),
                          size:f.size,spineCount:ep.spine.length,cover});
       added++;
-    }catch(e){ if(!e.code) console.error(e); failed.push((f.name||'file')+': '+e.message); }   // coded = expected refusal
+    }catch(e){ console.error(e); failed.push((f.name||'file')+': '+e.message); }
   }
   busy(false);
   await renderShelf();
   if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
   updateStorageInfo();
   if(failed.length) showSheet('Could not add '+failed.length+(failed.length===1?' file':' files'),
-    failed.join('\n')+(epubFailed?'\n\nBooks with DRM (Adobe or Kindle) cannot be opened by any reader other than the vendor’s own app.':''),[{label:'OK'}]);
+    failed.join('\n')+'\n\nBooks with DRM (Adobe or Kindle) cannot be opened by any reader other than the vendor’s own app.',[{label:'OK'}]);
   else if(added) toast(added===1?'Added':added+' books added');
   else if(dupes) toast(dupes===1?'Already on your shelf':'Already on your shelf');
 }
@@ -868,13 +833,7 @@ async function openBook(id){
     if(!rec) throw new Error('The file is missing from storage.');
     const meta=await get('books',id);
     freeBook();
-    if(rec.pdf){
-      const secs=rec.pdf.sections;
-      book={format:'pdf',title:meta?meta.title:'PDF',author:meta?meta.author:'',sections:secs,
-            spine:secs.map((s,i)=>({href:'#'+i})),
-            toc:secs.map((s,i)=>({label:s.title||('Part '+(i+1)),idx:i,anchor:null,depth:1})),
-            hrefToSpine:()=>({idx:-1,anchor:null})};
-    } else book=await loadEpub(await rec.blob.arrayBuffer());
+    book=await loadEpub(await rec.blob.arrayBuffer());
     bookId=id;
     if(meta){ meta.opened=Date.now(); await put('books',meta); }
     document.title=book.title+' — Visual Snow Reader';
@@ -912,21 +871,8 @@ async function blobFor(path){
   const url=URL.createObjectURL(new Blob([b],{type:guessType(path)}));
   blobUrls.set(path,url); return url;
 }
-function pdfSection(idx){
-  const holder=el('div');
-  for(const b of book.sections[idx].blocks){
-    if(b.t==='h'){ const h=el('h2'); h.textContent=b.text; holder.appendChild(h); }
-    else if(b.t==='v'){
-      const v=el('p','verse');
-      b.text.split('\n').forEach((line,i)=>{ if(i) v.appendChild(el('br')); v.appendChild(document.createTextNode(line)); });
-      holder.appendChild(v);
-    } else { const q=el('p'); q.textContent=b.text; holder.appendChild(q); }
-  }
-  return holder;
-}
 async function getClean(idx){
   if(cleanCache.has(idx)) return cleanCache.get(idx);
-  if(book.format==='pdf'){ const h=pdfSection(idx); cleanCache.set(idx,h); return h; }
   const item=book.spine[idx];
   const doc=parseDoc(await book.zip.text(item.href)||'');
   const holder=el('div');
@@ -1104,16 +1050,12 @@ bindRange('#sWs','#vWs',v=>S.ws=v,()=>(S.ws/100).toFixed(2)+'em');
 bindRange('#sMeas','#vMeas',v=>S.measure=v,()=>S.measure+'rem');
 bindRange('#sGap','#vGap',v=>S.gap=v,()=>(S.gap/100).toFixed(2)+'em');
 bindRange('#sCon','#vCon',v=>S.contrast=v,()=>S.contrast+'%');
-bindRange('#sHl','#vHl',v=>{S.hlStrength=v; if(!S.hl){S.hl=true; $('#cHl').checked=true;}},()=>S.hlStrength+'%');
 bindRange('#sSent','#vSent',v=>S.perBlock=v,()=>String(S.perBlock),reflowInPlace);
 bindRange('#sMin','#vMin',v=>S.minSentences=v,()=>S.minSentences+' sent.',reflowInPlace);
 bindRange('#sCap','#vCap',v=>S.capIdx=v,()=>CAPS[S.capIdx]?CAPS[S.capIdx]+' words':'off',reflowInPlace);
 $('#fFam').addEventListener('change',e=>{ S.font=e.target.value; applySettings(); });
 $('#cBg').addEventListener('input',e=>{ S.customBg=e.target.value; applySettings(); });
 $('#cFg').addEventListener('input',e=>{ S.customFg=e.target.value; applySettings(); });
-$('#cHl').addEventListener('change',e=>{ S.hl=e.target.checked; applySettings(); });
-$('#cHlc').addEventListener('input',e=>{ S.hlColor=e.target.value; S.hl=true; syncControls(); applySettings(); });
-$('#hlAuto').addEventListener('click',()=>{ S.hlColor=''; syncControls(); applySettings(); });
 $('#cOrig').addEventListener('change',e=>{ S.origGap=e.target.checked; applySettings(); });
 $('#cIndent').addEventListener('change',e=>{ S.indent=e.target.checked; applySettings(); });
 document.querySelectorAll('#segAlign button').forEach(b=>b.addEventListener('click',()=>{ S.align=b.dataset.v; syncControls(); applySettings(); }));
@@ -1134,9 +1076,6 @@ function syncControls(){
   $('#cOrig').checked=!!S.origGap; $('#cIndent').checked=!!S.indent;
   const th=THEMES.find(t=>t.name===S.theme)||THEMES[0];
   $('#cBg').value=S.customBg||th.bg; $('#cFg').value=S.customFg||th.fg;
-  $('#cHl').checked=!!S.hl; $('#sHl').value=S.hlStrength; $('#vHl').textContent=S.hlStrength+'%';
-  $('#cHlc').value=S.hlColor||mix(S.customBg||th.bg,S.customFg||th.fg,0.3);
-  $('#hlAuto').classList.toggle('sel',!S.hlColor);
   document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('sel',!S.customBg&&!S.customFg&&b.dataset.name===S.theme));
   document.querySelectorAll('#segAlign button').forEach(b=>b.classList.toggle('sel',b.dataset.v===S.align));
 }
@@ -1159,7 +1098,7 @@ async function consumeSharedFile(){
     const name=res.headers.get('x-filename')||'shared.epub';
     const blob=await res.blob();
     await c.delete('shared-book');
-    const f=new File([blob],name,{type:res.headers.get('x-type')||''});
+    const f=new File([blob],name,{type:'application/epub+zip'});
     await addFiles([f]);
     return true;
   }catch(e){ return false; }
